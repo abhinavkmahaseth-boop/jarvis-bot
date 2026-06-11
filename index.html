@@ -1295,6 +1295,41 @@ let _dailyLimitHit  = false;
 let _db      = null;
 let _journal = [];
 
+function saveOrderState() {
+  localStorage.setItem('jarvis_orders', JSON.stringify(_openOrders));
+  localStorage.setItem('jarvis_tp',     JSON.stringify(_tpState));
+  localStorage.setItem('jarvis_sl',     JSON.stringify(_slOrders));
+}
+
+function restoreOrderState() {
+  try {
+    _openOrders = JSON.parse(localStorage.getItem('jarvis_orders') || '{}');
+    _tpState    = JSON.parse(localStorage.getItem('jarvis_tp')     || '{}');
+    _slOrders   = JSON.parse(localStorage.getItem('jarvis_sl')     || '{}');
+    const oc = Object.keys(_openOrders).length, tc = Object.keys(_tpState).length;
+    if (oc) logAuto(`Restored ${oc} pending order(s)`, 'ok');
+    if (tc) logAuto(`Restored TP state for ${tc} position(s)`, 'ok');
+  } catch(e) { logAuto('State restore error: ' + e.message, 'err'); }
+}
+
+async function recoverSLOrders() {
+  for (const pos of _positions) {
+    const pid = pos.product_id;
+    const tp  = _tpState[pid];
+    if (!tp) continue;
+    const sym = pos.product?.symbol || '';
+    const existing = _slOrders[pid];
+    if (existing?.orderId) {
+      try {
+        const r = await deltaRequest('GET', `/v2/orders/${existing.orderId}`);
+        if (r.result?.state === 'open') continue;
+      } catch {}
+    }
+    logAuto(`Recovering SL for ${sym} @ ${tp.sl}`, 'warn');
+    await moveSL(pid, tp.sl, sym);
+  }
+}
+
 async function deltaHmac(secret, msg) {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
@@ -1882,6 +1917,7 @@ async function closePosition(productId, closeSide, size) {
 
 function startPositionPolling() {
   if (_posPollTimer) clearInterval(_posPollTimer);
+  if (localStorage.getItem('delta_key')) refreshPositions();
   _posPollTimer = setInterval(() => {
     if (localStorage.getItem('delta_key')) refreshPositions();
   }, 5000);
@@ -1976,6 +2012,7 @@ async function confirmTrade() {
     statusEl.style.color = 'var(--green)';
     statusEl.textContent = `✓ Order #${oid} placed — monitoring for fill`;
     btn.textContent = '✓ Done';
+    saveOrderState();
     startPositionPolling();
     refreshBalance();
     setTimeout(closeModal, 2500);
@@ -2195,6 +2232,7 @@ async function autoPlaceTrade(sym, setup) {
   logAuto(`✅ ${sym} ${lng?'LONG':'SHORT'} — ${contracts}x @ ${entry} | Order #${oid}`, 'ok');
   tgAlert('trade_opened', {sym, side, entry, sl, tp1: tps[0].p, contracts, risk: maxLoss,
     grade: fvg?.grade, tf: fvg?.tf});
+  saveOrderState();
 }
 
 async function autoScanAll() {
@@ -2279,18 +2317,18 @@ async function pollOpenOrders() {
       if (order.state === 'filled') {
         logAuto(`✅ Order #${oid} (${info.sym}) filled — placing SL`, 'ok');
         await onOrderFilled(oid, info);
-        delete _openOrders[oid];
+        delete _openOrders[oid]; saveOrderState();
         updateAutoStats();
       } else if (order.state === 'cancelled') {
         logAuto(`Order #${oid} cancelled externally`, 'warn');
-        delete _openOrders[oid];
+        delete _openOrders[oid]; saveOrderState();
         const entry = _journal.find(t => String(t.orderId)===String(oid) && t.status==='open');
         if (entry) await journalUpdate(entry.id, {status:'cancelled', closeReason:'external', closedAt: new Date().toISOString()});
       } else if (Date.now() - info.placedAt > staleMin * 60000) {
         await deltaRequest('DELETE', `/v2/orders/${oid}`);
         logAuto(`⏱ Stale order #${oid} (${info.sym}) cancelled after ${staleMin}min`, 'warn');
         tgAlert('stale_cancelled', {sym: info.sym});
-        delete _openOrders[oid];
+        delete _openOrders[oid]; saveOrderState();
         const entry = _journal.find(t => String(t.orderId)===String(oid) && t.status==='open');
         if (entry) await journalUpdate(entry.id, {status:'cancelled', closeReason:'stale', closedAt: new Date().toISOString()});
       }
@@ -2313,6 +2351,7 @@ async function onOrderFilled(oid, info) {
     _slOrders[pid] = {orderId: tp.slOrderId, price: tp.sl};
     logAuto(`SL placed @ ${tp.sl} for ${info.sym}`, 'ok');
     tgAlert('order_filled', {sym: info.sym, price: tp.entry});
+    saveOrderState();
   } catch(e) { logAuto(`SL placement failed: ${e.message}`, 'err'); }
 }
 
@@ -2333,6 +2372,7 @@ async function moveSL(pid, newPrice, sym) {
     _slOrders[pid] = {orderId: res.result?.id, price: newPrice};
     tp.slOrderId   = res.result?.id;
     logAuto(`SL moved → ${newPrice} (${sym})`, 'ok');
+    saveOrderState();
   } catch(e) { logAuto(`SL move failed: ${e.message}`, 'err'); }
 }
 
@@ -2358,6 +2398,7 @@ async function manageTpLevels() {
         logAuto(`🎯 TP1 hit (${sym}) — closed ${qty}, SL → breakeven`, 'ok');
         tgAlert('tp1_hit', {sym, qty, price: mark, remaining: tp.contracts});
         await moveSL(pid, tp.entry, sym);
+        saveOrderState();
       } catch(e) { tp.closing = false; logAuto(`TP1 close error: ${e.message}`, 'err'); }
     }
     // TP2 — close 50% of remaining (25% total), move SL to TP1
@@ -2370,6 +2411,7 @@ async function manageTpLevels() {
         logAuto(`🎯 TP2 hit (${sym}) — closed ${qty}, SL → TP1`, 'ok');
         tgAlert('tp2_hit', {sym, qty, price: mark, remaining: tp.contracts});
         await moveSL(pid, tp.tp1, sym);
+        saveOrderState();
       } catch(e) { tp.closing = false; logAuto(`TP2 close error: ${e.message}`, 'err'); }
     }
     // TP3 — close all remaining
@@ -2380,6 +2422,7 @@ async function manageTpLevels() {
         tp.tp3Hit = true; tp.closing = false;
         logAuto(`🎯 TP3 hit (${sym}) — full position closed`, 'ok');
         tgAlert('tp3_hit', {sym, qty: remaining, price: mark, pnl: parseFloat(pos.unrealized_pnl||0)});
+        delete _tpState[pid]; delete _slOrders[pid]; saveOrderState();
       } catch(e) { tp.closing = false; logAuto(`TP3 close error: ${e.message}`, 'err'); }
     }
   }
@@ -2520,7 +2563,12 @@ loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();
 loadReportSettingsUI();
 if (getReportSettings().on) scheduleAIReport();
+restoreOrderState();
 startOrderPolling();
+if (localStorage.getItem('delta_key')) {
+  pollOpenOrders();
+  setTimeout(recoverSLOrders, 8000);
+}
 // Restore auto mode if it was running before page reload
 if (localStorage.getItem('auto_mode') === 'on' && localStorage.getItem('delta_key')) {
   _autoMode = true;
