@@ -525,6 +525,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <div class="key-ok" id="tg-status" style="margin-top:.4rem"></div>
         <span class="sc-desc" style="margin-top:.5rem;display:block">1. Message <b>@BotFather</b> → /newbot → paste token above<br>2. Send any message to your bot, then click Auto-fetch</span>
       </div>
+
+      <!-- Scheduled AI Reports -->
+      <div class="settings-card">
+        <div class="sc-title">📊 Scheduled AI Reports</div>
+        <div class="sc-desc" style="margin-bottom:.7rem">JARVIS auto-analyses a symbol and sends a market report to Telegram on a schedule — bias, key levels, best setup.</div>
+        <div class="sc-row">
+          <div class="sc-field">
+            <label class="sc-label">Symbol</label>
+            <select id="report-sym" class="sc-input">
+              <option value="BTCUSD">BTC</option>
+              <option value="SOLUSD">SOL</option>
+              <option value="ETHUSD">ETH</option>
+              <option value="PAXGUSD">PAXG</option>
+            </select>
+          </div>
+          <div class="sc-field">
+            <label class="sc-label">Every (hours)</label>
+            <input type="number" id="report-hours" class="sc-input" value="4" min="1" max="24" step="0.5">
+            <span class="sc-desc">Min 1h, max 24h</span>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:.5rem 0">
+          <input type="checkbox" id="report-on" style="width:14px;height:14px;accent-color:var(--accent)">
+          <span class="sc-label" style="margin:0">Enable scheduled reports</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-save" style="padding:8px 18px" onclick="saveReportSettings()">Save &amp; Schedule</button>
+          <span style="font-size:10px;color:var(--text3)">Next report: <b id="report-next" style="color:var(--accent)">—</b></span>
+        </div>
+        <div class="key-ok" id="report-status" style="margin-top:.4rem"></div>
+        <span class="sc-desc" style="margin-top:.4rem;display:block">Requires Gemini API key + Telegram. Runs while tab is open.</span>
+      </div>
+
       <div class="settings-card" style="grid-column:1/-1">
         <div class="sc-title">Delta Exchange India — Trading API</div>
         <div class="sc-row">
@@ -1252,6 +1285,7 @@ let _livePrices   = {};
 // ── Auto-trade state ──────────────────────────────────────────────────────────
 let _autoMode       = false;
 let _autoTimer      = null;
+let _reportTimer    = null;
 let _orderPollTimer = null;
 let _openOrders     = {};   // orderId → {productId,sym,placedAt,contracts,lng}
 let _slOrders       = {};   // productId → {orderId,price}
@@ -1540,6 +1574,121 @@ function loadTgSettingsUI() {
   const chatId = getTgChatId();
   if (token)  { const el = document.getElementById('tg-token');   if (el) el.value = token; }
   if (chatId) { const el = document.getElementById('tg-chat-id'); if (el) el.value = chatId; }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Scheduled AI Reports ──────────────────────────────────────────────────────
+const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function getReportSettings() {
+  return {
+    on:    localStorage.getItem('report_on') === '1',
+    sym:   localStorage.getItem('report_sym')   || 'BTCUSD',
+    hours: parseFloat(localStorage.getItem('report_hours') || '4'),
+  };
+}
+
+function updateReportUI() {
+  const { on, hours } = getReportSettings();
+  const el = document.getElementById('report-next');
+  if (!el) return;
+  if (!on) { el.textContent = 'Off'; return; }
+  const lastRun = parseInt(localStorage.getItem('report_last_run') || '0');
+  const next = lastRun ? lastRun + hours * 3600000 : Date.now();
+  const mins = Math.max(0, Math.round((next - Date.now()) / 60000));
+  el.textContent = mins === 0 ? 'Running soon…' : mins < 60 ? `${mins}m` : `${(mins/60).toFixed(1)}h`;
+}
+
+async function runScheduledAIReport() {
+  const { sym } = getReportSettings();
+  const key   = localStorage.getItem('gemini_key');
+  const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+  if (!key) { logAuto('Scheduled report: no Gemini key', 'warn'); return; }
+  if (!getTgToken() || !getTgChatId()) { logAuto('Scheduled report: Telegram not configured', 'warn'); return; }
+
+  logAuto(`📊 Running scheduled AI report for ${sym}…`);
+  try {
+    const cnt = parseInt(localStorage.getItem('n_candles')) || 150;
+    const [d4h, d1h, d15m] = await Promise.all(TFS.map(tf => fetchOHLCV(sym, tf.res, cnt)));
+    const cp  = d1h[d1h.length - 1]?.close || '?';
+    const fmt = rows => rows.slice(-25).map(r => {
+      const d = new Date(r.time * 1000).toISOString().replace('T',' ').slice(0,16);
+      return `${d}|${r.open}|${r.high}|${r.low}|${r.close}`;
+    }).join('\n');
+
+    const userMsg = `${sym} @ $${cp}\n\n4H (last 25):\n${fmt(d4h)}\n\n1H (last 25):\n${fmt(d1h)}\n\n15M (last 25):\n${fmt(d15m)}`;
+    const sysPrompt = `You are a concise SMC market analyst. Given OHLC data, produce a brief Telegram report (max 220 words, plain text only, no markdown, no asterisks):
+Line 1: Bias — BULLISH / BEARISH / NEUTRAL + one-sentence reason
+Line 2: blank
+Key Levels: list 2–3 support and 2–3 resistance prices
+blank line
+Setup: best trade setup to watch (entry zone, SL area, TP target) — or "No clean setup right now"
+blank line
+Sentiment score: X/10
+Keep it sharp. Traders need fast actionable info.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system_instruction: {parts:[{text: sysPrompt}]},
+        contents: [{role:'user', parts:[{text: userMsg}]}],
+        generationConfig: {temperature: 0.2, maxOutputTokens: 450}
+      })
+    });
+    const j        = await res.json();
+    const analysis = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Analysis unavailable.';
+    const now      = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+
+    const tgMsg = `📊 <b>JARVIS — ${sym} Report</b>\n🕐 ${now} IST\n\n${escHtml(analysis)}`;
+    await sendTelegramAlert(tgMsg);
+    localStorage.setItem('report_last_run', Date.now().toString());
+    updateReportUI();
+    logAuto(`📊 Scheduled report sent for ${sym}`, 'ok');
+  } catch(e) {
+    logAuto(`Scheduled report error: ${e.message}`, 'err');
+  }
+}
+
+function scheduleAIReport() {
+  if (_reportTimer) { clearTimeout(_reportTimer); clearInterval(_reportTimer); _reportTimer = null; }
+  const { on, hours, sym } = getReportSettings();
+  if (!on) { updateReportUI(); return; }
+
+  const ms       = hours * 3600000;
+  const lastRun  = parseInt(localStorage.getItem('report_last_run') || '0');
+  const elapsed  = Date.now() - lastRun;
+  const delay    = elapsed >= ms ? 0 : ms - elapsed;
+
+  logAuto(`📊 AI report scheduled: ${sym} every ${hours}h — next in ${delay < 60000 ? 'seconds' : Math.round(delay/60000)+'min'}`);
+  updateReportUI();
+
+  _reportTimer = setTimeout(async () => {
+    await runScheduledAIReport();
+    _reportTimer = setInterval(runScheduledAIReport, ms);
+  }, delay);
+
+  // Update countdown every minute
+  setInterval(updateReportUI, 60000);
+}
+
+function saveReportSettings() {
+  const sym  = document.getElementById('report-sym')?.value;
+  const hrs  = parseFloat(document.getElementById('report-hours')?.value || '4');
+  const on   = document.getElementById('report-on')?.checked;
+  if (sym) localStorage.setItem('report_sym',   sym);
+  localStorage.setItem('report_hours', hrs);
+  localStorage.setItem('report_on',    on ? '1' : '0');
+  const st = document.getElementById('report-status');
+  if (st) { st.textContent = on ? `✓ Scheduled — ${sym} every ${hrs}h` : '✓ Saved (disabled)'; st.style.color = 'var(--green)'; }
+  scheduleAIReport();
+}
+
+function loadReportSettingsUI() {
+  const { on, sym, hours } = getReportSettings();
+  const symEl = document.getElementById('report-sym');   if (symEl) symEl.value = sym;
+  const hrsEl = document.getElementById('report-hours'); if (hrsEl) hrsEl.value = hours;
+  const onEl  = document.getElementById('report-on');    if (onEl)  onEl.checked = on;
+  updateReportUI();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2320,6 +2469,8 @@ restoreAutoSymUI();
 loadTgSettingsUI();
 loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();
+loadReportSettingsUI();
+if (getReportSettings().on) scheduleAIReport();
 startOrderPolling();
 // Restore auto mode if it was running before page reload
 if (localStorage.getItem('auto_mode') === 'on' && localStorage.getItem('delta_key')) {
