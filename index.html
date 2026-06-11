@@ -550,9 +550,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
           <input type="checkbox" id="report-on" style="width:14px;height:14px;accent-color:var(--accent)">
           <span class="sc-label" style="margin:0">Enable scheduled reports</span>
         </label>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <button class="btn btn-save" style="padding:8px 18px" onclick="saveReportSettings()">Save &amp; Schedule</button>
-          <span style="font-size:10px;color:var(--text3)">Next report: <b id="report-next" style="color:var(--accent)">—</b></span>
+          <button class="btn btn-algo" style="padding:8px 18px" id="report-now-btn" onclick="sendInstantReport(this)">⚡ Send Now</button>
+          <span style="font-size:10px;color:var(--text3)">Next: <b id="report-next" style="color:var(--accent)">—</b></span>
         </div>
         <div class="key-ok" id="report-status" style="margin-top:.4rem"></div>
         <span class="sc-desc" style="margin-top:.4rem;display:block">Requires Gemini API key + Telegram. Runs while tab is open.</span>
@@ -1703,6 +1704,20 @@ function scheduleAIReport() {
 
   // Update countdown every minute
   setInterval(updateReportUI, 60000);
+}
+
+async function sendInstantReport(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Analysing…';
+  const st = document.getElementById('report-status');
+  if (st) { st.textContent = '⏳ Fetching data + asking Gemini…'; st.style.color = 'var(--text2)'; }
+  try {
+    await runScheduledAIReport();
+    if (st) { st.textContent = '✓ Report sent to Telegram'; st.style.color = 'var(--green)'; }
+  } catch(e) {
+    if (st) { st.textContent = '✗ ' + e.message; st.style.color = 'var(--red)'; }
+  }
+  btn.disabled = false; btn.textContent = orig;
 }
 
 function saveReportSettings() {
