@@ -1807,13 +1807,18 @@ async function refreshBalance() {
 }
 
 async function refreshPositions() {
-  if (!Object.keys(_productMap).length) await loadProducts();
   try {
-    const ids = Object.values(_productMap).map(p => p.id).join(',');
-    const j = await deltaRequest('GET', '/v2/positions', ids ? {product_ids: ids} : {});
+    const j = await deltaRequest('GET', '/v2/positions', {});
     const newPositions = (j.result || []).filter(p => Math.abs(p.size) > 0);
+    // Enrich product symbol from productMap if API doesn't return product object
+    if (!Object.keys(_productMap).length) await loadProducts();
+    newPositions.forEach(p => {
+      if (!p.product?.symbol && !p.product_symbol) {
+        const sym = Object.keys(_productMap).find(k => _productMap[k].id === p.product_id);
+        if (sym) p.product_symbol = sym;
+      }
+    });
     const newIds = new Set(newPositions.map(p => p.product_id));
-    // Detect positions that just closed
     for (const pid of _prevPosIds) {
       if (!newIds.has(pid)) {
         const closed = _positions.find(p => p.product_id === pid);
@@ -1826,7 +1831,9 @@ async function refreshPositions() {
     checkPendingBrackets();
     if (Object.keys(_tpState).length) manageTpLevels();
     checkDailyLimit();
-  } catch {}
+  } catch(e) {
+    logAuto('Positions error: ' + e.message, 'err');
+  }
 }
 
 function renderPositions() {
