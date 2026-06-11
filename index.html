@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JARVIS — SMC Analyser</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
@@ -376,41 +375,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
   <!-- Dashboard -->
   <div class="page active" id="page-dashboard">
     <div class="page-hd">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span class="page-hd-title">Dashboard</span>
-        <span class="auto-badge" id="auto-mode-badge"><span class="auto-dot"></span>AUTO</span>
-      </div>
+      <span class="page-hd-title">Dashboard</span>
       <div class="page-hd-actions">
         <div class="mode-pill" id="mode-pill-dash">
           <button id="mode-swing-dash" class="active" onclick="toggleMode('swing')">Swing 4H</button>
           <button id="mode-scalp-dash" class="scalp" onclick="toggleMode('scalp')">⚡ Scalp 1H</button>
         </div>
-        <button class="btn btn-algo" onclick="analyseAll('algo')">⚡ Analyse All</button>
-        <button class="btn btn-ai" id="btn-all-ai" onclick="analyseAll('ai')">🤖 AI All</button>
+        <button class="btn btn-algo" onclick="analyseAll()">⚡ Analyse All</button>
+        <button class="btn btn-save" onclick="sendAllAlertsToTelegram(this)" style="padding:6px 12px">📤 Alert All</button>
       </div>
-    </div>
-
-    <!-- Account summary row -->
-    <div class="acct-row">
-      <div class="acct-card">
-        <div class="acct-lbl">Available Balance</div>
-        <div class="acct-val" id="acct-balance" style="font-size:12px;color:var(--text3)">Add API keys</div>
-      </div>
-      <div class="acct-card">
-        <div class="acct-lbl">Unrealised P&amp;L</div>
-        <div class="acct-val" id="acct-pnl">—</div>
-      </div>
-      <div class="acct-card">
-        <div class="acct-lbl">Open Positions</div>
-        <div class="acct-val" id="acct-pos-count">—</div>
-      </div>
-      <button class="btn btn-algo" style="align-self:center;font-size:11px;padding:7px 14px" onclick="refreshBalance()">↻ Refresh</button>
     </div>
 
     <!-- Symbol cards -->
     <div class="sym-grid" id="grid"></div>
 
-    <!-- Positions monitor (shown when positions exist) -->
+    <!-- Positions monitor placeholder (kept for future) -->
     <div id="positions-section" style="display:none;flex-direction:column;gap:4px">
       <div class="pos-section-lbl">Open Positions</div>
       <div class="pos-table-wrap">
@@ -443,8 +422,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
           <button id="mode-swing-analysis" class="active" onclick="toggleMode('swing')">Swing 4H</button>
           <button id="mode-scalp-analysis" class="scalp" onclick="toggleMode('scalp')">⚡ Scalp 1H</button>
         </div>
-        <button class="btn btn-algo" onclick="analyseAll('algo')">⚡ Analyse All</button>
-        <button class="btn btn-ai" onclick="analyseAll('ai')">🤖 AI All</button>
+        <button class="btn btn-algo" onclick="analyseAll()">⚡ Analyse All</button>
+        <button class="btn btn-save" onclick="sendAllAlertsToTelegram(this)" style="padding:6px 12px">📤 Alert All</button>
       </div>
     </div>
     <div class="out-tabs" id="tabs"></div>
@@ -501,23 +480,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         </div>
       </div>
       <div class="settings-card">
-        <div class="sc-title">Gemini AI</div>
-        <div class="sc-field">
-          <label class="sc-label">API Key</label>
-          <input type="password" id="api-key" class="sc-input" placeholder="AIza…" autocomplete="off">
-        </div>
-        <div class="sc-field">
-          <label class="sc-label">Model</label>
-          <select id="ai-model" class="sc-input" onchange="localStorage.setItem('gemini_model',this.value)">
-            <option value="gemini-2.5-flash">gemini-2.5-flash (free tier)</option>
-            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-            <option value="gemini-2.5-pro">gemini-2.5-pro (billing required)</option>
-          </select>
-        </div>
-        <button class="btn btn-save" style="width:100%;padding:8px 0;margin-top:.35rem" onclick="saveKey()">Save Key</button>
-        <div class="key-ok" id="ai-key-status"></div>
-      </div>
-      <div class="settings-card">
         <div class="sc-title">Telegram Alerts</div>
         <div class="sc-field">
           <label class="sc-label">Bot Token</label>
@@ -538,10 +500,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <span class="sc-desc" style="margin-top:.5rem;display:block">1. Message <b>@BotFather</b> → /newbot → paste token above<br>2. Send any message to your bot, then click Auto-fetch</span>
       </div>
 
-      <!-- Scheduled AI Reports -->
+      <!-- Scheduled Algo Reports -->
       <div class="settings-card">
-        <div class="sc-title">📊 Scheduled AI Reports</div>
-        <div class="sc-desc" style="margin-bottom:.7rem">JARVIS auto-analyses a symbol and sends a market report to Telegram on a schedule — bias, key levels, best setup.</div>
+        <div class="sc-title">📊 Scheduled Algo Reports</div>
+        <div class="sc-desc" style="margin-bottom:.7rem">JARVIS runs the SMC algo on a symbol and sends bias + key levels + best setup to Telegram automatically.</div>
         <div class="sc-row">
           <div class="sc-field">
             <label class="sc-label">Symbol</label>
@@ -568,82 +530,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
           <span style="font-size:10px;color:var(--text3)">Next: <b id="report-next" style="color:var(--accent)">—</b></span>
         </div>
         <div class="key-ok" id="report-status" style="margin-top:.4rem"></div>
-        <span class="sc-desc" style="margin-top:.4rem;display:block">Requires Gemini API key + Telegram. Runs while tab is open.</span>
-      </div>
-
-      <div class="settings-card" style="grid-column:1/-1">
-        <div class="sc-title">Delta Exchange India — Trading API</div>
-        <div class="sc-row">
-          <div class="sc-field">
-            <label class="sc-label">API Key</label>
-            <input type="password" id="delta-key" class="sc-input" placeholder="Your Delta API key" autocomplete="off">
-          </div>
-          <div class="sc-field">
-            <label class="sc-label">API Secret</label>
-            <input type="password" id="delta-secret" class="sc-input" placeholder="Your Delta API secret" autocomplete="off">
-          </div>
-        </div>
-        <div class="sc-row">
-          <div class="sc-field">
-            <label class="sc-label">Max Risk Per Trade</label>
-            <input type="number" id="risk-pct" class="sc-input" value="3" min="0.5" max="10" step="0.5" oninput="localStorage.setItem('delta_risk',this.value)">
-            <span class="sc-desc">% of available balance lost if SL hits</span>
-          </div>
-          <div class="sc-field">
-            <label class="sc-label">Default Leverage</label>
-            <input type="number" id="leverage" class="sc-input" value="10" min="1" max="200" oninput="localStorage.setItem('delta_leverage',this.value)">
-            <span class="sc-desc">Used for margin estimate only</span>
-          </div>
-        </div>
-        <div class="sc-desc" style="margin-bottom:.6rem">Keys are stored locally in your browser. Use a key with Trading permission only (no Withdrawal).</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.35rem">
-          <button class="btn btn-save" style="padding:8px 18px" onclick="saveDeltaKeys()">Save &amp; Connect</button>
-          <button class="btn btn-algo" style="padding:8px 18px" onclick="testDeltaConnection()">Test Connection</button>
-        </div>
-        <div class="key-ok" id="delta-key-status" style="margin-top:.4rem;line-height:1.7"></div>
-      </div>
-
-      <!-- Automation Engine -->
-      <div class="settings-card" style="grid-column:1/-1">
-        <div class="sc-title">Automation Engine</div>
-        <div class="sc-field" style="margin-bottom:.6rem">
-          <label class="sc-label">Symbols to Auto-Trade</label>
-          <div class="sym-select" id="auto-sym-select">
-            <label class="sym-chk on" id="asc-BTCUSD" onclick="toggleAutoSym('BTCUSD')"><span class="sym-chk-dot"></span><span class="sym-chk-lbl">BTC</span></label>
-            <label class="sym-chk on" id="asc-SOLUSD" onclick="toggleAutoSym('SOLUSD')"><span class="sym-chk-dot"></span><span class="sym-chk-lbl">SOL</span></label>
-            <label class="sym-chk on" id="asc-ETHUSD" onclick="toggleAutoSym('ETHUSD')"><span class="sym-chk-dot"></span><span class="sym-chk-lbl">ETH</span></label>
-            <label class="sym-chk on" id="asc-PAXGUSD" onclick="toggleAutoSym('PAXGUSD')"><span class="sym-chk-dot"></span><span class="sym-chk-lbl">PAXG</span></label>
-          </div>
-          <span class="sc-desc">Only selected symbols will be scanned in auto mode</span>
-        </div>
-        <div class="sc-row">
-          <div class="sc-field">
-            <label class="sc-label">Stale Order Cancel</label>
-            <input type="number" id="auto-stale-min" class="sc-input" value="60" min="15" max="480" oninput="localStorage.setItem('auto_stale_min',this.value)">
-            <span class="sc-desc">Cancel unfilled limit orders after this many minutes</span>
-          </div>
-          <div class="sc-field">
-            <label class="sc-label">Daily Loss Limit %</label>
-            <input type="number" id="auto-daily-loss" class="sc-input" value="5" min="1" max="30" step="0.5" oninput="localStorage.setItem('auto_daily_loss',this.value)">
-            <span class="sc-desc">Stop all trading if daily loss exceeds this % of balance</span>
-          </div>
-        </div>
-        <div class="sc-field" style="margin-top:.5rem">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="auto-ai-confirm" style="width:14px;height:14px;accent-color:var(--accent)" onchange="localStorage.setItem('auto_ai_confirm',this.checked?'1':'0')">
-            <span class="sc-label" style="margin:0">Require AI confirmation before each trade</span>
-          </label>
-          <span class="sc-desc" style="margin-top:.25rem;display:block">Gemini evaluates each setup before JARVIS places an order. Adds ~3–5s per scan. Requires Gemini API key.</span>
-        </div>
-        <div class="auto-stats">
-          <div class="auto-stat-box"><div class="lbl">Status</div><div class="val" id="auto-status-txt">Idle</div></div>
-          <div class="auto-stat-box"><div class="lbl">Next Scan</div><div class="val" id="auto-next-scan">—</div></div>
-          <div class="auto-stat-box"><div class="lbl">Today's P&amp;L</div><div class="val" id="auto-daily-pnl">$0.00</div></div>
-          <div class="auto-stat-box"><div class="lbl">Pending Orders</div><div class="val" id="auto-open-orders">0</div></div>
-        </div>
-        <button id="auto-toggle-btn" class="btn" style="width:100%;padding:9px 0;font-size:12px;font-weight:700;border-color:rgba(0,229,168,.4);color:var(--green);background:rgba(0,229,168,.08)" onclick="toggleAutoMode()">🟢 Start Auto Mode</button>
-        <div class="sc-title" style="margin-top:1.1rem;margin-bottom:.3rem">Activity Log</div>
-        <div class="auto-log" id="auto-log"><div class="auto-log-line">Auto mode not started</div></div>
+        <span class="sc-desc" style="margin-top:.4rem;display:block">Runs while tab is open. Requires Telegram to be configured.</span>
       </div>
 
       <!-- Firebase Cloud Storage -->
@@ -677,6 +564,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
           <button class="jnl-pill"        id="jnl-f-month" onclick="setJournalFilter('month')">This Month</button>
           <button class="jnl-pill"        id="jnl-f-all"   onclick="setJournalFilter('all')">All Time</button>
         </div>
+        <button class="btn btn-save" style="font-size:11px;padding:6px 14px" onclick="openLogTradeModal()">+ Log Trade</button>
         <button class="btn" style="font-size:10px;padding:5px 12px" onclick="exportJournalCSV()">⬇ Export CSV</button>
       </div>
     </div>
@@ -697,9 +585,78 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 
 </main>
 
-<!-- Trade confirmation modal -->
-<div class="modal-overlay" id="trade-modal" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal-box" id="trade-modal-box"></div>
+<!-- Log Trade modal -->
+<div class="modal-overlay" id="log-modal" style="display:none" onclick="if(event.target===this)closeLogModal()">
+  <div class="modal-box">
+    <div class="modal-title">📝 Log Trade</div>
+    <div class="sc-row" style="margin-bottom:.6rem">
+      <div class="sc-field">
+        <label class="sc-label">Symbol</label>
+        <select id="lm-sym" class="sc-input">
+          <option value="BTCUSD">BTC</option><option value="SOLUSD">SOL</option>
+          <option value="ETHUSD">ETH</option><option value="PAXGUSD">PAXG</option>
+        </select>
+      </div>
+      <div class="sc-field">
+        <label class="sc-label">Direction</label>
+        <select id="lm-dir" class="sc-input">
+          <option value="LONG">LONG</option><option value="SHORT">SHORT</option>
+        </select>
+      </div>
+    </div>
+    <div class="sc-row" style="margin-bottom:.6rem">
+      <div class="sc-field">
+        <label class="sc-label">Mode</label>
+        <select id="lm-mode" class="sc-input">
+          <option value="swing">Swing (4H)</option><option value="scalp">Scalp (1H)</option>
+        </select>
+      </div>
+      <div class="sc-field">
+        <label class="sc-label">Grade</label>
+        <select id="lm-grade" class="sc-input">
+          <option value="A">A</option><option value="B">B</option><option value="-">—</option>
+        </select>
+      </div>
+    </div>
+    <div class="sc-row" style="margin-bottom:.6rem">
+      <div class="sc-field"><label class="sc-label">Entry Price</label><input type="number" id="lm-entry" class="sc-input" placeholder="0.00" step="0.01"></div>
+      <div class="sc-field"><label class="sc-label">Stop Loss</label><input type="number" id="lm-sl" class="sc-input" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="sc-row" style="margin-bottom:.6rem">
+      <div class="sc-field"><label class="sc-label">TP1</label><input type="number" id="lm-tp1" class="sc-input" placeholder="0.00" step="0.01"></div>
+      <div class="sc-field"><label class="sc-label">TP2</label><input type="number" id="lm-tp2" class="sc-input" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="sc-row" style="margin-bottom:.6rem">
+      <div class="sc-field"><label class="sc-label">TP3</label><input type="number" id="lm-tp3" class="sc-input" placeholder="0.00" step="0.01"></div>
+      <div class="sc-field"><label class="sc-label">Size (contracts)</label><input type="number" id="lm-size" class="sc-input" placeholder="0.01" step="0.001" min="0"></div>
+    </div>
+    <div class="sc-field" style="margin-bottom:.8rem">
+      <label class="sc-label">Notes (optional)</label>
+      <input type="text" id="lm-notes" class="sc-input" placeholder="e.g. 15M FVG tap, session open setup…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-save" style="flex:1;padding:9px 0" onclick="saveManualTrade()">Save Trade</button>
+      <button class="btn" style="padding:9px 18px" onclick="closeLogModal()">Cancel</button>
+    </div>
+    <div class="modal-status" id="lm-status"></div>
+  </div>
+</div>
+
+<!-- Close Trade modal -->
+<div class="modal-overlay" id="close-modal" style="display:none" onclick="if(event.target===this)closeCloseModal()">
+  <div class="modal-box">
+    <div class="modal-title">🔒 Close Trade</div>
+    <input type="hidden" id="cm-id">
+    <div class="sc-field" style="margin-bottom:.8rem">
+      <label class="sc-label">Exit Price</label>
+      <input type="number" id="cm-exit" class="sc-input" placeholder="0.00" step="0.01">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-save" style="flex:1;padding:9px 0" onclick="confirmCloseTrade()">Confirm Close</button>
+      <button class="btn" style="padding:9px 18px" onclick="closeCloseModal()">Cancel</button>
+    </div>
+    <div class="modal-status" id="cm-status"></div>
+  </div>
 </div>
 
 <script>
@@ -728,45 +685,6 @@ function nav(page) {
   if (page === 'journal') renderJournal();
 }
 window.addEventListener('popstate', () => nav(location.hash.slice(1) || 'dashboard'));
-
-// ── SMC Prompt ───────────────────────────────────────────────────────────────
-const SMC_PROMPT = `SMC TRADE QUALIFICATION ENGINE v4.2
-You are a professional SMC analyst. Qualify or reject trades. Output exact prices only. Never approximate. When uncertain: NO TRADE.
-RULES: FVGs only. No OBs, no indicators. 4H bias overrides all. Map both sides (grade counter-bias C, never trade). Liquidity sweep = grading factor (A vs B), not mandatory entry condition.
-PRIORITY: 4H Bias → Structure → Liquidity → FVG → Premium/Discount → Displacement → Entry confirmation → R:R
-STEP 1 — 4H BIAS: BULLISH(HH+HL,above EQ,bullish displacement) | BEARISH(LH+LL,below EQ,bearish displacement) | NEUTRAL→NO TRADE
-STEP 2 — STRUCTURE: identify HH/HL/LH/LL. CHoCH invalidation level.
-STEP 3 — LIQUIDITY: BSL(equal highs,swing highs) | SSL(equal lows,swing lows). Major BSL | Major SSL | Swept YES/NO
-STEP 4 — FVGs ONLY: Bullish: C1.high<C3.low | Bearish: C1.low>C3.high. High|Low|CE=(H+L)/2
-STEP 5 — STATUS: Fresh(untouched) | Tapped(entered,CE held) | Mitigated(exclude) | Inverted(polarity flip)
-STEP 6 — PREMIUM/DISCOUNT: EQ=(HTF swing H+L)/2. Bearish→only bearish FVGs above EQ. Bullish→only bullish FVGs below EQ.
-STEP 7 — DISPLACEMENT: IMPULSIVE(large body+volume=valid) | CORRECTIVE(small body=reject). Body>avg of prev 5 candles.
-STEP 8 — GRADE: A(bias+sweep+fresh+P/D+strong disp) | B(bias+fresh+missing one) | C(counter-bias,never trade)
-STEP 9 — ENTRY(all 5 required): 1.FVG tap 2.15M rejection candle 3.15M displacement 4.15M CHoCH/BOS 5.R:R≥1:2
-STEP 10 — SL: beyond far FVG edge AND originating swing. Never inside FVG.
-STEP 11 — TARGETS: TP1=nearest opposing liquidity | TP2=next unmitigated 1H FVG | TP3=4H HTF pool. Exact prices + R:R.
-STEP 12 — POSITION MGT: TP1 30-40%→SL to BE | TP2 30%→trail to TP1 | TP3 30% ride trailing 15M LH/HL.
-STEP 13 — INVALIDATION→NO TRADE: bias unclear | no fresh FVG in P/D | mitigated | no displacement | R:R<1:2
-OUTPUT: KEY LEVELS table + SETUPS only (no FVG tables). Exact prices.`;
-
-const SMC_SCALP_PROMPT = `SMC SCALP ENGINE v1.0
-You are a professional intraday SMC scalper. You receive three timeframes: 1H (trend/bias), 15M (structure + FVG), 5M (entry trigger). Qualify or reject every setup. Output exact prices only. Never approximate. When uncertain: NO TRADE.
-RULES: FVGs only. No OBs, no indicators. 1H bias overrides all. Map both sides (grade counter-bias C, never trade). Liquidity sweep = grading factor (A vs B), not mandatory. If SL >0.5% from entry: REJECT.
-PRIORITY: 1H Bias → 15M Structure → 15M Liquidity → 15M FVG → Premium/Discount → 5M Displacement → 5M Entry → R:R
-STEP 1 — 1H BIAS: BULLISH(HH+HL on 1H, above 1H EQ, bullish displacement) | BEARISH(LH+LL on 1H, below 1H EQ, bearish displacement) | NEUTRAL→NO TRADE. Note session: London/NY preferred. Asian session = NO TRADE unless structure is crystal clear.
-STEP 2 — 15M STRUCTURE: Identify 15M HH/HL/LH/LL. Mark last CHoCH level — this is the hard invalidation line.
-STEP 3 — 15M LIQUIDITY: BSL(equal highs, 15M swing highs) | SSL(equal lows, 15M swing lows). Note if swept within last 5 candles.
-STEP 4 — 15M FVGs ONLY: Bullish: C1.high<C3.low | Bearish: C1.low>C3.high. High|Low|CE=(H+L)/2. Only from displacement moves, not consolidation.
-STEP 5 — STATUS: Fresh(untouched) | Tapped(price entered, CE held) | Mitigated(price closed through — exclude) | Inverted(polarity flip — note only)
-STEP 6 — PREMIUM/DISCOUNT: EQ=(last 15M swing H + last 15M swing L)/2. Bearish→bearish FVGs above EQ only. Bullish→bullish FVGs below EQ only. Mid-range FVGs = NO TRADE.
-STEP 7 — 5M DISPLACEMENT: IMPULSIVE(large body, closes at high/low) | CORRECTIVE(small body, long wicks = reject). 5M body must be >avg of prev 3 candles.
-STEP 8 — GRADE: A(1H bias + 15M liquidity swept + fresh 15M FVG in P/D + strong 5M displacement) | B(1H bias + fresh 15M FVG, missing sweep OR weak displacement) | C(counter-bias — never trade)
-STEP 9 — ENTRY(all 5 required): 1.15M FVG tap 2.5M rejection candle at FVG 3.5M displacement away from FVG 4.5M CHoCH or BOS 5.R:R≥1:2
-STEP 10 — SL: Beyond far edge of 15M FVG + 0.1% buffer. Hard rule: if SL >0.5% from entry → REJECT entire setup.
-STEP 11 — TARGETS: TP1=nearest 15M opposing liquidity (exact price) | TP2=next unmitigated 15M FVG opposite side | TP3=1H liquidity pool or 1H EQ. R:R for each.
-STEP 12 — POSITION MGT: TP1 40%→SL to BE immediately | TP2 40%→trail SL to TP1 | TP3 20% ride with 5M trailing LH/HL. If price stalls >3 candles inside FVG without 5M CHoCH: EXIT FULL.
-STEP 13 — INVALIDATION→NO TRADE: 1H bias unclear | no fresh 15M FVG in P/D | FVG mitigated | no 5M displacement | SL>0.5% | R:R<1:2 | Asian session chop | major news in next 30M
-OUTPUT: KEY LEVELS table (exact prices) + ACTIVE SETUPS only. No FVG dump tables. Flag session (London/NY/Asian).`;
 
 let _mode = localStorage.getItem('analysis_mode') || 'swing';
 
@@ -798,8 +716,8 @@ function buildUI() {
         <span class="card-tf-pill">1H</span>
       </div>
       <div class="card-btns">
-        <button class="abtn abtn-algo" id="abtn-${s}" onclick="runCard('${s}','algo')" ${!open?'disabled':''}>⚡ Algo</button>
-        <button class="abtn abtn-ai"   id="aibtn-${s}" onclick="runCard('${s}','ai')"  ${!open?'disabled':''}>🤖 AI</button>
+        <button class="abtn abtn-algo" id="abtn-${s}" onclick="runCard('${s}')" ${!open?'disabled':''}>⚡ Analyse</button>
+        <button class="abtn" id="tgbtn-${s}" onclick="sendSymAlert('${s}',this)" ${!open?'disabled':''} style="background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)">📤</button>
       </div>`;
     grid.appendChild(card);
 
@@ -821,29 +739,13 @@ function buildUI() {
 
   showTab(SYMS[0]);
 
-  const saved = localStorage.getItem('gemini_key');
-  if (saved) { document.getElementById('api-key').value = saved; document.getElementById('ai-key-status').textContent = 'Key loaded ✓'; }
-  const model = localStorage.getItem('gemini_model');
-  if (model) document.getElementById('ai-model').value = model;
   const nc = localStorage.getItem('n_candles'); if (nc) document.getElementById('n-candles').value = nc;
   const lb = localStorage.getItem('swing_lb');  if (lb) document.getElementById('swing-lb').value  = lb;
 
-  toggleMode(_mode); // restore saved mode
+  toggleMode(_mode);
   startWS();
   nav(location.hash.slice(1) || 'dashboard');
   initCharts();
-
-  // Load Delta credentials
-  const dk = localStorage.getItem('delta_key'), ds = localStorage.getItem('delta_secret');
-  if (dk) document.getElementById('delta-key').value = dk;
-  if (ds) document.getElementById('delta-secret').value = ds;
-  const dr = localStorage.getItem('delta_risk');     if (dr) document.getElementById('risk-pct').value = dr;
-  const dl = localStorage.getItem('delta_leverage'); if (dl) document.getElementById('leverage').value = dl;
-  const sm = localStorage.getItem('auto_stale_min');  if (sm) document.getElementById('auto-stale-min').value  = sm;
-  const dlp= localStorage.getItem('auto_daily_loss'); if (dlp) document.getElementById('auto-daily-loss').value = dlp;
-  const aic = document.getElementById('auto-ai-confirm'); if (aic) aic.checked = localStorage.getItem('auto_ai_confirm') === '1';
-  loadProducts();
-  if (dk && ds) { refreshBalance(); startPositionPolling(); }
 }
 
 // ── Charts (SVG sparklines) ───────────────────────────────────────────────────
@@ -918,13 +820,6 @@ function setWS(msg, state) {
   if (txt) txt.textContent = msg;
   if (dot) { dot.className = 'sb-ws-dot' + (state==='ok'?' on':state==='err'?' err':''); }
 }
-function saveKey() {
-  const k = document.getElementById('api-key').value.trim(); if (!k) return;
-  localStorage.setItem('gemini_key', k);
-  localStorage.setItem('gemini_model', document.getElementById('ai-model').value);
-  document.getElementById('ai-key-status').textContent = 'Saved ✓';
-}
-
 // ── WebSocket real-time prices ────────────────────────────────────────────────
 let _ws = null, _wsRetry = 0;
 function startWS() {
@@ -1218,8 +1113,10 @@ function renderAlgoScalp(sym, data) {
           20% ride on 5M trailing ${lng ? 'HL' : 'LH'} &nbsp;·&nbsp;
           Exit if price stalls >3 5M candles in FVG
         </div>
-        <button class="abtn abtn-algo" style="margin-top:.65rem;width:100%;padding:9px 0;font-size:11px;letter-spacing:.06em"
-          onclick="openTradeModal('${sym}',${i})">⚡ Trade This Setup</button>
+        <div style="display:flex;gap:6px;margin-top:.65rem">
+          <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlert('${sym}',${i})">📤 Send Alert</button>
+        </div>
       </div>`;
     });
   }
@@ -1296,8 +1193,10 @@ function renderAlgo(sym, data) {
           Trail rest on 15M ${lng ? 'HL' : 'LH'} &nbsp;·&nbsp;
           Exit if 15M CHoCH flips / FVG inverts
         </div>
-        <button class="abtn abtn-algo" style="margin-top:.65rem;width:100%;padding:9px 0;font-size:11px;letter-spacing:.06em"
-          onclick="openTradeModal('${sym}',${i})">⚡ Trade This Setup</button>
+        <div style="display:flex;gap:6px;margin-top:.65rem">
+          <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlert('${sym}',${i})">📤 Send Alert</button>
+        </div>
       </div>`;
     });
   }
@@ -1305,102 +1204,48 @@ function renderAlgo(sym, data) {
 }
 
 // ── Run Algo ─────────────────────────────────────────────────────────────────
-async function runAlgo(sym) {
-  const cnt = parseInt(document.getElementById('n-candles').value) || 150;
-  const lb  = parseInt(document.getElementById('swing-lb').value)  || 5;
+async function computeAlgo(sym) {
+  const cnt = parseInt(localStorage.getItem('n_candles') || document.getElementById('n-candles')?.value) || 150;
+  const lb  = parseInt(localStorage.getItem('swing_lb')  || document.getElementById('swing-lb')?.value)  || 5;
+  const ts  = new Date().toLocaleTimeString();
 
   if (_mode === 'scalp') {
-    const [d1h, d15m, d5m] = await Promise.all([
-      fetchOHLCV(sym, '1h',  cnt),
-      fetchOHLCV(sym, '15m', cnt),
-      fetchOHLCV(sym, '5m',  cnt),
-    ]);
+    const [d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
     const cp = d5m[d5m.length-1].close;
-    const el = document.getElementById(`cp-val-${sym}`); if (el) el.textContent = cp.toLocaleString('en-IN', {maximumFractionDigits:2});
-    const pv1h  = pivots(d1h,  lb), pv15m = pivots(d15m, Math.max(3, lb-2)), pv5m = pivots(d5m, 3);
-    const b1h   = bias(pv1h),  b15m  = bias(pv15m),  b5m  = bias(pv5m);
-    const eq1h  = eqLevel(pv1h), eq15m = eqLevel(pv15m), eq5m = eqLevel(pv5m);
-    const ch1h  = choch(pv1h,  b1h),  ch15m = choch(pv15m, b15m), ch5m = choch(pv5m, b5m);
-    const liq   = liqLevels(pv15m, cp);
-    const f15m  = detectFVGs(d15m, '15M', pv15m).slice(-6);
-    const f5m   = detectFVGs(d5m,  '5M',  pv5m).slice(-4);
-    const fvgs  = [...f15m, ...f5m];
+    const pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2)), pv5m = pivots(d5m,3);
+    const b1h = bias(pv1h), b15m = bias(pv15m), b5m = bias(pv5m);
+    const eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m), eq5m = eqLevel(pv5m);
+    const ch1h = choch(pv1h,b1h), ch15m = choch(pv15m,b15m), ch5m = choch(pv5m,b5m);
+    const liq = liqLevels(pv15m, cp);
+    const fvgs = [...detectFVGs(d15m,'15M',pv15m).slice(-6), ...detectFVGs(d5m,'5M',pv5m).slice(-4)];
     fvgs.forEach(v => { v.grade = grade(v, b1h, eq1h); });
     const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
-    outputs[sym].setups = setups;
-    outputs[sym].b4h = b1h; outputs[sym].b1h = b15m;
-    return renderAlgoScalp(sym, {cp, b1h, b15m, b5m, eq1h, eq15m, eq5m, ch1h, ch15m, ch5m, liq, setups, ts: new Date().toLocaleTimeString()});
+    return {mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, eq15m:eq5m, ch4h:ch1h, ch1h:ch15m, ch15m:ch5m, liq, setups, ts};
   }
 
-  // ── Swing mode ──
-  const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym, tf.res, cnt)));
+  const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym,tf.res,cnt)));
   const cp = d1h[d1h.length-1].close;
-  const el = document.getElementById(`cp-val-${sym}`); if (el) el.textContent = cp.toLocaleString('en-IN', {maximumFractionDigits:2});
-  const pv4h = pivots(d4h, lb), pv1h = pivots(d1h, lb), pv15m = pivots(d15m, Math.max(3, lb-2));
+  const pv4h = pivots(d4h,lb), pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2));
   const b4h = bias(pv4h), b1h = bias(pv1h), b15m = bias(pv15m);
   const eq4h = eqLevel(pv4h), eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m);
-  const ch4h = choch(pv4h, b4h), ch1h = choch(pv1h, b1h), ch15m = choch(pv15m, b15m);
+  const ch4h = choch(pv4h,b4h), ch1h = choch(pv1h,b1h), ch15m = choch(pv15m,b15m);
   const liq = liqLevels(pv4h, cp);
-  const f4h  = detectFVGs(d4h,  '4H',  pv4h).slice(-3);
-  const f1h  = detectFVGs(d1h,  '1H',  pv1h).slice(-5);
-  const f15m = detectFVGs(d15m, '15M', pv15m).slice(-3);
-  const fvgs = [...f4h, ...f1h, ...f15m];
+  const fvgs = [...detectFVGs(d4h,'4H',pv4h).slice(-3), ...detectFVGs(d1h,'1H',pv1h).slice(-5), ...detectFVGs(d15m,'15M',pv15m).slice(-3)];
   fvgs.forEach(v => { v.grade = grade(v, b4h, eq4h); });
   const setups = buildSetups(fvgs, b4h, cp, liq, pv4h);
-  outputs[sym].setups = setups;
-  outputs[sym].b4h = b4h; outputs[sym].b1h = b1h;
-  return renderAlgo(sym, {cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, ch15m, liq, setups, ts: new Date().toLocaleTimeString()});
+  return {mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, ch15m, liq, setups, ts};
 }
 
-// ── Run AI ────────────────────────────────────────────────────────────────────
-async function runAI(sym) {
-  const key = document.getElementById('api-key').value.trim() || localStorage.getItem('gemini_key');
-  if (!key) throw new Error('Add Gemini API key in Settings');
-  const model = document.getElementById('ai-model').value || localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
-  const cnt = parseInt(document.getElementById('n-candles').value) || 150;
-  const fmt = rows => { const ln = ['Date (UTC)|O|H|L|C|Vol','---|---|---|---|---|---']; rows.forEach(r => { const d=new Date(r.time*1000).toISOString().replace('T',' ').slice(0,16); ln.push(`${d}|${r.open}|${r.high}|${r.low}|${r.close}|${r.volume}`); }); return ln.join('\n'); };
-
-  let msg, prompt;
-  if (_mode === 'scalp') {
-    const [d1h, d15m, d5m] = await Promise.all([
-      fetchOHLCV(sym, '1h', cnt),
-      fetchOHLCV(sym, '15m', cnt),
-      fetchOHLCV(sym, '5m', cnt),
-    ]);
-    const cp = d5m[d5m.length-1].close;
-    msg = `Scalp analyse ${sym}.P\nPrice: ${cp}\n\n1H (Trend/Bias):\n${fmt(d1h)}\n\n15M (Structure + FVG):\n${fmt(d15m)}\n\n5M (Entry):\n${fmt(d5m)}`;
-    prompt = SMC_SCALP_PROMPT;
-  } else {
-    const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym, tf.res, cnt)));
-    const cp = d1h[d1h.length-1].close;
-    msg = `Analyse ${sym}.P\nPrice: ${cp}\n\n4H:\n${fmt(d4h)}\n\n1H:\n${fmt(d1h)}\n\n15M:\n${fmt(d15m)}`;
-    prompt = SMC_PROMPT;
-  }
-
-  const ep = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}&alt=sse`;
-  const res = await fetch(ep, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:prompt}]},contents:[{role:'user',parts:[{text:msg}]}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})});
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-  let out = ''; const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
-  while (true) {
-    const {done,value} = await reader.read(); if (done) break;
-    buf += dec.decode(value, {stream:true});
-    const lines = buf.split('\n'); buf = lines.pop();
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim(); if (data === '[DONE]') continue;
-      try {
-        const chunk = JSON.parse(data).candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (chunk) {
-          out += chunk;
-          outputs[sym].latest = `<button class="copy-btn" onclick="copyOut('${sym}')">Copy</button>` + marked.parse(out) + '<span class="cursor"></span>';
-          if (activeTab === sym) paintOutput(sym);
-        }
-      } catch {}
-    }
-  }
-  return out;
+async function runAlgo(sym) {
+  const data = await computeAlgo(sym);
+  outputs[sym].algoData = data;
+  outputs[sym].setups   = data.setups;
+  outputs[sym].b4h      = data.b4h;
+  outputs[sym].b1h      = data.b1h;
+  const el = document.getElementById(`cp-val-${sym}`);
+  if (el) el.textContent = data.cp.toLocaleString('en-IN', {maximumFractionDigits:2});
+  return data.mode === 'scalp' ? renderAlgoScalp(sym, data) : renderAlgo(sym, data);
 }
-function copyOut(sym) { navigator.clipboard.writeText(outputs[sym]?.rawText || ''); }
 
 // ── Mode toggle ───────────────────────────────────────────────────────────────
 function toggleMode(m) {
@@ -1417,41 +1262,26 @@ function toggleMode(m) {
 }
 
 // ── Run card ──────────────────────────────────────────────────────────────────
-async function runCard(sym, mode) {
+async function runCard(sym) {
   if (!isMarketOpen(sym)) return;
-  const btn = mode === 'algo' ? document.getElementById(`abtn-${sym}`) : document.getElementById(`aibtn-${sym}`);
+  const btn = document.getElementById(`abtn-${sym}`);
   const orig = btn.textContent;
-  btn.disabled = true;
-  btn.className = `abtn ${mode==='algo'?'abtn-algo':'abtn-ai'} running`;
-  btn.textContent = mode === 'algo' ? 'Fetching…' : 'Asking AI…';
-  showTab(sym);
-  nav('analysis');
+  btn.disabled = true; btn.className = 'abtn abtn-algo running'; btn.textContent = 'Fetching…';
+  showTab(sym); nav('analysis');
   try {
-    if (mode === 'algo') {
-      outputs[sym].latest = await runAlgo(sym);
-    } else {
-      outputs[sym].latest = `<div style="color:#a090ff;font-size:12px;margin-bottom:8px">🤖 ${document.getElementById('ai-model').value} — streaming…</div>`;
-      paintOutput(sym);
-      const raw = await runAI(sym);
-      outputs[sym].rawText = raw;
-      outputs[sym].latest = `<button class="copy-btn" onclick="copyOut('${sym}')">Copy</button>` + marked.parse(raw);
-    }
-    paintOutput(sym);
-    showTab(sym);
-    btn.className = `abtn ${mode==='algo'?'abtn-algo':'abtn-ai'} done-ok`;
-    btn.textContent = '✓ Done';
-    setWS('Real-time · Connected', 'ok');
+    outputs[sym].latest = await runAlgo(sym);
+    paintOutput(sym); showTab(sym);
+    btn.className = 'abtn abtn-algo done-ok'; btn.textContent = '✓ Done';
   } catch(e) {
-    btn.className = `abtn ${mode==='algo'?'abtn-algo':'abtn-ai'} done-fail`;
-    btn.textContent = '✗ Error';
+    btn.className = 'abtn abtn-algo done-fail'; btn.textContent = '✗ Error';
     outputs[sym].latest = `<div style="color:var(--red)"><b>Error:</b> ${e.message}</div>`;
     paintOutput(sym);
   }
   btn.disabled = false;
-  setTimeout(() => { btn.className = `abtn ${mode==='algo'?'abtn-algo':'abtn-ai'}`; btn.textContent = orig; }, 4000);
+  setTimeout(() => { btn.className = 'abtn abtn-algo'; btn.textContent = orig; }, 4000);
 }
-async function analyseAll(mode) {
-  for (const s of SYMS) { await runCard(s, mode); await new Promise(r => setTimeout(r, 400)); }
+async function analyseAll() {
+  for (const s of SYMS) { await runCard(s); await new Promise(r => setTimeout(r, 400)); }
 }
 
 // ── Download ──────────────────────────────────────────────────────────────────
@@ -1477,103 +1307,11 @@ async function downloadAll() {
   }
 }
 
-// ── Delta Exchange India API ──────────────────────────────────────────────────
-const DELTA_BASE = 'https://api.india.delta.exchange';
-let _productMap  = {};    // symbol → {id, contractValue}
-let _balance     = null;
-let _balanceSym  = '₹';
-let _positions   = [];
-let _pendingBrackets = {}; // productId → {sl, tp1, bracketPlaced}
-let _posPollTimer = null;
-let _prevPosIds   = new Set();
-let _livePrices   = {};
-// ── Auto-trade state ──────────────────────────────────────────────────────────
-let _autoMode       = false;
-let _autoTimer      = null;
-let _reportTimer    = null;
-let _orderPollTimer = null;
-let _openOrders     = {};   // orderId → {productId,sym,placedAt,contracts,lng}
-let _slOrders       = {};   // productId → {orderId,price}
-let _tpState        = {};   // productId → {entry,sl,tp1,tp2,tp3,lng,contracts,tp1Hit,tp2Hit,tp3Hit,closing}
-let _dailyLimitHit  = false;
-let _db      = null;
-let _journal = [];
-
-function saveOrderState() {
-  localStorage.setItem('jarvis_orders', JSON.stringify(_openOrders));
-  localStorage.setItem('jarvis_tp',     JSON.stringify(_tpState));
-  localStorage.setItem('jarvis_sl',     JSON.stringify(_slOrders));
-}
-
-function restoreOrderState() {
-  try {
-    _openOrders = JSON.parse(localStorage.getItem('jarvis_orders') || '{}');
-    _tpState    = JSON.parse(localStorage.getItem('jarvis_tp')     || '{}');
-    _slOrders   = JSON.parse(localStorage.getItem('jarvis_sl')     || '{}');
-    const oc = Object.keys(_openOrders).length, tc = Object.keys(_tpState).length;
-    if (oc) logAuto(`Restored ${oc} pending order(s)`, 'ok');
-    if (tc) logAuto(`Restored TP state for ${tc} position(s)`, 'ok');
-  } catch(e) { logAuto('State restore error: ' + e.message, 'err'); }
-}
-
-async function recoverSLOrders() {
-  for (const pos of _positions) {
-    const pid = pos.product_id;
-    const tp  = _tpState[pid];
-    if (!tp) continue;
-    const sym = pos.product?.symbol || '';
-    const existing = _slOrders[pid];
-    if (existing?.orderId) {
-      try {
-        const r = await deltaRequest('GET', `/v2/orders/${existing.orderId}`);
-        if (r.result?.state === 'open') continue;
-      } catch {}
-    }
-    logAuto(`Recovering SL for ${sym} @ ${tp.sl}`, 'warn');
-    await moveSL(pid, tp.sl, sym);
-  }
-}
-
-async function deltaHmac(secret, msg) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const buf = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function deltaRequest(method, path, params = {}, bodyObj = null) {
-  const apiKey = localStorage.getItem('delta_key')    || '';
-  const secret = localStorage.getItem('delta_secret') || '';
-  if (!apiKey || !secret) throw new Error('Delta API keys not set — go to Settings');
-  const ts      = Math.floor(Date.now() / 1000).toString();
-  const qs      = Object.keys(params).length ? '?' + new URLSearchParams(params) : '';
-  const bodyStr = bodyObj ? JSON.stringify(bodyObj) : '';
-  const sig     = await deltaHmac(secret, method + ts + path + qs + bodyStr);
-  const res = await fetch(`${DELTA_BASE}${path}${qs}`, {
-    method,
-    headers: {
-      'api-key': apiKey, 'timestamp': ts, 'signature': sig,
-      'User-Agent': 'rest-client', 'Content-Type': 'application/json', 'Accept': 'application/json',
-    },
-    body: bodyStr || undefined,
-  });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.code || json.message || `API error ${res.status}`);
-  return json;
-}
-
-async function loadProducts() {
-  try {
-    const r = await fetch(`${DELTA_BASE}/v2/products?contract_types=perpetual_futures&page_size=300`);
-    const j = await r.json();
-    if (j.success && j.result) {
-      j.result.forEach(p => {
-        if (SYMS.includes(p.symbol))
-          _productMap[p.symbol] = {id: p.id, contractValue: parseFloat(p.contract_value) || 1};
-      });
-    }
-  } catch {}
-}
+// ── State ─────────────────────────────────────────────────────────────────────
+let _livePrices  = {};
+let _reportTimer = null;
+let _db          = null;
+let _journal     = [];
 
 // ── Firebase Cloud Storage ────────────────────────────────────────────────────
 async function initJournal() {
@@ -1584,9 +1322,9 @@ async function initJournal() {
     renderJournal();
     const fbSt = document.getElementById('fb-status');
     if (fbSt) { fbSt.textContent = `✓ Connected — ${_journal.length} trades loaded`; fbSt.style.color = 'var(--green)'; }
-    logAuto(`☁ Firebase: ${_journal.length} trades loaded`, 'ok');
+    logTg(`☁ Firebase: ${_journal.length} trades loaded`, 'ok');
   } catch(e) {
-    logAuto(`Firebase load error: ${e.message}`, 'err');
+    logTg(`Firebase load error: ${e.message}`, 'err');
     const fbSt = document.getElementById('fb-status');
     if (fbSt) { fbSt.textContent = `✗ Load error: ${e.message}`; fbSt.style.color = 'var(--red)'; }
   }
@@ -1608,7 +1346,7 @@ function initFirebase() {
     _db = firebase.firestore();
     return true;
   } catch(e) {
-    logAuto(`Firebase init error: ${e.message}`, 'err');
+    logTg(`Firebase init error: ${e.message}`, 'err');
     return false;
   }
 }
@@ -1638,54 +1376,6 @@ function loadFirebaseSettingsUI() {
   if (k) { const el = document.getElementById('fb-api-key');    if (el) el.value = k; }
   if (p) { const el = document.getElementById('fb-project-id'); if (el) el.value = p; }
 }
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── AI Trade Filter ──────────────────────────────────────────────────────────
-const AI_FILTER_PROMPT = `You are a SMC trade filter. Given a setup, output ONLY valid JSON (no markdown, no code fences):
-{"decision":"GO","reason":"..."} or {"decision":"SKIP","reason":"..."}
-
-GO = trade direction aligns with 4H and 1H bias + FVG is clean + R:R is acceptable.
-SKIP = bias conflict, overextended move, major level directly at entry, or weak structure.
-Keep reason under 12 words.`;
-
-async function askAIFilter(sym, setup) {
-  const key = localStorage.getItem('gemini_key');
-  if (!key) return {ok: true, reason: 'No Gemini key — filter bypassed'};
-  const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
-  const { entry, sl, tps, lng, fvg } = setup;
-  const bias4h = outputs[sym]?.b4h || '?';
-  const bias1h = outputs[sym]?.b1h || '?';
-  const cp     = _livePrices[sym] || entry;
-  const msg = [
-    `Symbol: ${sym} | Direction: ${lng ? 'LONG' : 'SHORT'}`,
-    `Current price: ${cp} | Entry: ${entry} | SL: ${sl}`,
-    `TP1: ${tps[0].p} | TP2: ${tps[1].p} | TP3: ${tps[2].p}`,
-    `Grade: ${fvg?.grade} | Type: ${fvg?.type === 'bull' ? 'Bull FVG' : 'Bear FVG'} | TF: ${fvg?.tf}`,
-    `FVG zone: ${fvg?.gL} – ${fvg?.gH} | CE: ${fvg?.ce}`,
-    `4H bias: ${bias4h} | 1H bias: ${bias1h}`,
-  ].join('\n');
-  try {
-    const ep = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-    const res = await fetch(ep, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        system_instruction: {parts: [{text: AI_FILTER_PROMPT}]},
-        contents: [{role: 'user', parts: [{text: msg}]}],
-        generationConfig: {temperature: 0.05, maxOutputTokens: 80}
-      })
-    });
-    if (!res.ok) return {ok: true, reason: `Gemini ${res.status} — filter bypassed`};
-    const j = await res.json();
-    const raw = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    return {ok: parsed.decision?.toUpperCase() === 'GO', reason: parsed.reason || ''};
-  } catch(e) {
-    return {ok: true, reason: `AI parse error — filter bypassed`};
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 // ── Telegram Alerts ──────────────────────────────────────────────────────────
 function getTgToken()  { return localStorage.getItem('tg_token') || ''; }
 function getTgChatId() { return localStorage.getItem('tg_chat_id') || ''; }
@@ -1750,64 +1440,6 @@ async function testTgAlert() {
   else    { if (st) { st.textContent = '✗ Failed — check token is correct and bot is not blocked'; st.style.color = 'var(--red)'; } }
 }
 
-function tgAlert(type, d = {}) {
-  const sym = d.sym || '';
-  const F2 = v => (v != null ? parseFloat(v).toLocaleString('en-IN', {maximumFractionDigits:2}) : '—');
-  let msg = '';
-  switch (type) {
-    case 'trade_opened':
-      msg = `🟢 <b>JARVIS — Trade Opened</b>\n`
-          + `📌 <b>${sym}</b> ${d.side === 'buy' ? '🔼 LONG' : '🔽 SHORT'}\n`
-          + `📊 Grade: <b>${d.grade || '?'}</b>  |  TF: ${d.tf || '?'}\n`
-          + `💰 Entry: $${F2(d.entry)}\n`
-          + `🛑 SL: $${F2(d.sl)}  |  🎯 TP1: $${F2(d.tp1)}\n`
-          + `📐 Contracts: ${d.contracts}  |  Risk: $${F2(d.risk)}`;
-      break;
-    case 'order_filled':
-      msg = `✅ <b>JARVIS — Order Filled</b>\n`
-          + `📌 <b>${sym}</b> filled at $${F2(d.price)}`;
-      break;
-    case 'tp1_hit':
-      msg = `🎯 <b>JARVIS — TP1 Hit</b>\n`
-          + `📌 <b>${sym}</b> — closed ${d.qty} contracts at $${F2(d.price)}\n`
-          + `🔒 SL moved to entry (breakeven)\n`
-          + `📊 Remaining: ${d.remaining} contracts`;
-      break;
-    case 'tp2_hit':
-      msg = `🎯🎯 <b>JARVIS — TP2 Hit</b>\n`
-          + `📌 <b>${sym}</b> — closed ${d.qty} contracts at $${F2(d.price)}\n`
-          + `🔒 SL moved to TP1\n`
-          + `📊 Remaining: ${d.remaining} contracts`;
-      break;
-    case 'tp3_hit':
-      msg = `🎯🎯🎯 <b>JARVIS — TP3 Hit — Full Close</b>\n`
-          + `📌 <b>${sym}</b> — closed all ${d.qty} contracts at $${F2(d.price)}\n`
-          + `💵 PnL: $${F2(d.pnl)}`;
-      break;
-    case 'sl_hit':
-      msg = `🛑 <b>JARVIS — Stop Loss Hit</b>\n`
-          + `📌 <b>${sym}</b> position closed\n`
-          + `💔 PnL: $${F2(d.pnl)}`;
-      break;
-    case 'stale_cancelled':
-      msg = `🗑 <b>JARVIS — Stale Order Cancelled</b>\n`
-          + `📌 <b>${sym}</b> order open for >30 min — cancelled automatically`;
-      break;
-    case 'daily_limit':
-      msg = `⛔ <b>JARVIS — Daily Loss Limit Hit</b>\n`
-          + `Auto trading paused. Loss: $${F2(d.loss)}\n`
-          + `Limit: $${F2(d.limit)}`;
-      break;
-    case 'ai_veto':
-      msg = `🤖 <b>JARVIS — AI Vetoed Trade</b>\n`
-          + `📌 <b>${sym}</b> setup rejected by Gemini\n`
-          + `💬 ${d.reason || 'No reason given'}`;
-      break;
-    default:
-      msg = `ℹ️ <b>JARVIS</b> — ${type}`;
-  }
-  sendTelegramAlert(msg);
-}
 
 function loadTgSettingsUI() {
   const token  = getTgToken();
@@ -1817,9 +1449,7 @@ function loadTgSettingsUI() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Scheduled AI Reports ──────────────────────────────────────────────────────
-const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
+// ── Scheduled Algo Reports ────────────────────────────────────────────────────
 function getReportSettings() {
   return {
     on:    localStorage.getItem('report_on') === '1',
@@ -1839,119 +1469,80 @@ function updateReportUI() {
   el.textContent = mins === 0 ? 'Running soon…' : mins < 60 ? `${mins}m` : `${(mins/60).toFixed(1)}h`;
 }
 
-// Convert markdown to Telegram HTML (bold headers, bold text, code, separators)
-function mdToTgHtml(text) {
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')   // escape HTML first
-    .replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>')                         // ## Heading → <b>
-    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')                            // **bold**
-    .replace(/\*(.+?)\*/g, '<i>$1</i>')                                // *italic*
-    .replace(/`([^`]+)`/g, '<code>$1</code>')                          // `code`
-    .replace(/^[-─]{3,}$/gm, '──────────────────')                     // --- separator
-    .replace(/\n{3,}/g, '\n\n')                                        // collapse blank lines
-    .trim();
-}
+function formatAlgoForTelegram(sym, data) {
+  const {cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, liq, setups, ts} = data;
+  const isScalp = data.mode === 'scalp';
+  const modeTag = isScalp ? '⚡ SCALP (1H/15M/5M)' : 'SWING (4H/1H/15M)';
+  const tf1 = isScalp ? '1H' : '4H', tf2 = isScalp ? '15M' : '1H', tf3 = isScalp ? '5M' : '15M';
+  const bv1 = b4h, bv2 = b1h, bv3 = b15m;
+  const eq  = isScalp ? eq1h : eq4h;
+  const ch  = isScalp ? ch1h : ch4h;
 
-// Split long text into ≤4000-char chunks on paragraph boundaries
-async function sendTelegramLong(header, body) {
-  const maxLen = 3900;
-  const lines  = body.split('\n');
-  const parts  = [];
-  let   chunk  = header + '\n\n';
+  let msg = `📊 <b>JARVIS — ${sym}</b>  [${modeTag}]\n`;
+  msg += `💰 Price: <b>${F(cp)}</b>  ·  ${ts}\n\n`;
+  msg += `<b>${tf1}:</b> ${bv1}  ·  <b>${tf2}:</b> ${bv2}  ·  <b>${tf3}:</b> ${bv3}\n`;
+  msg += `EQ: ${F(eq)}  ·  CHoCH: ${F(ch)}\n`;
+  msg += `BSL: <b>${F(liq.majBSL)}</b>  ·  SSL: <b>${F(liq.majSSL)}</b>  ·  Psych: ${F(liq.psych)}\n`;
 
-  for (const line of lines) {
-    if (chunk.length + line.length + 1 > maxLen) {
-      parts.push(chunk.trimEnd());
-      chunk = line + '\n';
-    } else {
-      chunk += line + '\n';
-    }
-  }
-  if (chunk.trim()) parts.push(chunk.trimEnd());
-
-  for (let i = 0; i < parts.length; i++) {
-    const msg = parts.length > 1 ? parts[i] + `\n\n<i>(${i+1}/${parts.length})</i>` : parts[i];
-    await sendTelegramAlert(msg);
-    if (i < parts.length - 1) await new Promise(r => setTimeout(r, 800));
-  }
-}
-
-async function runScheduledAIReport() {
-  const { sym } = getReportSettings();
-  const key   = localStorage.getItem('gemini_key');
-  const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
-  if (!key) { logAuto('Scheduled report: no Gemini key', 'warn'); return; }
-  if (!getTgToken() || !getTgChatId()) { logAuto('Scheduled report: Telegram not configured', 'warn'); return; }
-
-  logAuto(`📊 Running full AI report for ${sym}…`);
-  try {
-    const cnt = parseInt(localStorage.getItem('n_candles')) || 150;
-    const [d4h, d1h, d15m] = await Promise.all(TFS.map(tf => fetchOHLCV(sym, tf.res, cnt)));
-    const cp  = d1h[d1h.length - 1]?.close || '?';
-
-    // Same format as runAI() on the Analysis page
-    const fmtRows = rows => {
-      const ln = ['Date (UTC)|O|H|L|C|Vol', '---|---|---|---|---|---'];
-      rows.forEach(r => {
-        const d = new Date(r.time*1000).toISOString().replace('T',' ').slice(0,16);
-        ln.push(`${d}|${r.open}|${r.high}|${r.low}|${r.close}|${r.volume}`);
-      });
-      return ln.join('\n');
-    };
-    const userMsg = `Analyse ${sym}.P\nPrice: ${cp}\n\n4H:\n${fmtRows(d4h)}\n\n1H:\n${fmtRows(d1h)}\n\n15M:\n${fmtRows(d15m)}`;
-
-    // Full SMC_PROMPT — same system instruction as the Analysis page
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        system_instruction: {parts:[{text: SMC_PROMPT}]},
-        contents: [{role:'user', parts:[{text: userMsg}]}],
-        generationConfig: {temperature: 0.1, maxOutputTokens: 8192}
-      })
+  if (!setups?.length) {
+    msg += `\n❌ <b>NO TRADE</b> — No valid setup near current price`;
+  } else {
+    setups.forEach((s, i) => {
+      const {fvg, entry, sl, tps, lng} = s;
+      const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
+      msg += `\n━━━━━━━━━━━━━━━━\n`;
+      msg += `${lng ? '🟢 LONG' : '🔴 SHORT'} Setup ${i+1} · Grade <b>${fvg.grade}</b> · ${fvg.tf} FVG${fvg.swept ? ' ✓ Swept' : ''}\n`;
+      msg += `📍 Entry: <b>${F(fvg.gL)} – ${F(fvg.gH)}</b>  (CE: ${F(entry)})\n`;
+      msg += `🛑 SL: <b>${F(sl)}</b>  (${slPct}%)\n`;
+      msg += `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`;
+      msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
+      msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
     });
-    const j        = await res.json();
-    const raw      = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Analysis unavailable.';
-    const now      = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
-    const header   = `📊 <b>JARVIS — ${sym} Full Analysis</b>\n🕐 ${now} IST  |  💰 $${cp}`;
+  }
+  const now = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  msg += `\n<i>via JARVIS · ${now} IST</i>`;
+  return msg;
+}
 
-    await sendTelegramLong(header, mdToTgHtml(raw));
+async function runScheduledAlgoReport() {
+  const { sym } = getReportSettings();
+  if (!getTgToken() || !getTgChatId()) { logTg('Report: Telegram not configured', 'warn'); return; }
+  logTg(`📊 Running algo report for ${sym}…`);
+  try {
+    const data = await computeAlgo(sym);
+    const msg  = formatAlgoForTelegram(sym, data);
+    await sendTelegramAlert(msg);
     localStorage.setItem('report_last_run', Date.now().toString());
     updateReportUI();
-    logAuto(`📊 Full AI report sent for ${sym}`, 'ok');
+    logTg(`📊 Algo report sent for ${sym}`, 'ok');
   } catch(e) {
-    logAuto(`Scheduled report error: ${e.message}`, 'err');
+    logTg(`Report error: ${e.message}`, 'err');
   }
 }
 
-function scheduleAIReport() {
+function scheduleAlgoReport() {
   if (_reportTimer) { clearTimeout(_reportTimer); clearInterval(_reportTimer); _reportTimer = null; }
   const { on, hours, sym } = getReportSettings();
   if (!on) { updateReportUI(); return; }
-
-  const ms       = hours * 3600000;
-  const lastRun  = parseInt(localStorage.getItem('report_last_run') || '0');
-  const elapsed  = Date.now() - lastRun;
-  const delay    = elapsed >= ms ? 0 : ms - elapsed;
-
-  logAuto(`📊 AI report scheduled: ${sym} every ${hours}h — next in ${delay < 60000 ? 'seconds' : Math.round(delay/60000)+'min'}`);
+  const ms      = hours * 3600000;
+  const lastRun = parseInt(localStorage.getItem('report_last_run') || '0');
+  const delay   = (Date.now() - lastRun) >= ms ? 0 : ms - (Date.now() - lastRun);
+  logTg(`📊 Algo report scheduled: ${sym} every ${hours}h`);
   updateReportUI();
-
   _reportTimer = setTimeout(async () => {
-    await runScheduledAIReport();
-    _reportTimer = setInterval(runScheduledAIReport, ms);
+    await runScheduledAlgoReport();
+    _reportTimer = setInterval(runScheduledAlgoReport, ms);
   }, delay);
-
-  // Update countdown every minute
   setInterval(updateReportUI, 60000);
 }
 
 async function sendInstantReport(btn) {
   const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = '⏳ Analysing…';
+  btn.disabled = true; btn.textContent = '⏳ Running algo…';
   const st = document.getElementById('report-status');
-  if (st) { st.textContent = '⏳ Fetching data + asking Gemini…'; st.style.color = 'var(--text2)'; }
+  if (st) { st.textContent = '⏳ Running analysis…'; st.style.color = 'var(--text2)'; }
   try {
-    await runScheduledAIReport();
+    await runScheduledAlgoReport();
     if (st) { st.textContent = '✓ Report sent to Telegram'; st.style.color = 'var(--green)'; }
   } catch(e) {
     if (st) { st.textContent = '✗ ' + e.message; st.style.color = 'var(--red)'; }
@@ -1960,15 +1551,15 @@ async function sendInstantReport(btn) {
 }
 
 function saveReportSettings() {
-  const sym  = document.getElementById('report-sym')?.value;
-  const hrs  = parseFloat(document.getElementById('report-hours')?.value || '4');
-  const on   = document.getElementById('report-on')?.checked;
-  if (sym) localStorage.setItem('report_sym',   sym);
+  const sym = document.getElementById('report-sym')?.value;
+  const hrs = parseFloat(document.getElementById('report-hours')?.value || '4');
+  const on  = document.getElementById('report-on')?.checked;
+  if (sym) localStorage.setItem('report_sym', sym);
   localStorage.setItem('report_hours', hrs);
-  localStorage.setItem('report_on',    on ? '1' : '0');
+  localStorage.setItem('report_on', on ? '1' : '0');
   const st = document.getElementById('report-status');
   if (st) { st.textContent = on ? `✓ Scheduled — ${sym} every ${hrs}h` : '✓ Saved (disabled)'; st.style.color = 'var(--green)'; }
-  scheduleAIReport();
+  scheduleAlgoReport();
 }
 
 function loadReportSettingsUI() {
@@ -1978,673 +1569,68 @@ function loadReportSettingsUI() {
   const onEl  = document.getElementById('report-on');    if (onEl)  onEl.checked = on;
   updateReportUI();
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
-async function refreshBalance() {
-  const el = document.getElementById('acct-balance');
-  if (!el) return;
-  if (!localStorage.getItem('delta_key')) {
-    el.textContent = 'Add API keys'; el.style.fontSize = '11px'; el.style.color = 'var(--text3)'; return;
-  }
-  el.textContent = '…'; el.style.fontSize = ''; el.style.color = '';
+// ── Telegram alert helpers ────────────────────────────────────────────────────
+function logTg(msg, cls = '') {
+  console.log('[TG]', msg);
+}
+
+async function sendSymAlert(sym, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
   try {
-    const j = await deltaRequest('GET', '/v2/wallet/balances');
-    // Delta India: asset is USD, use available_balance directly (already in USD)
-    // Fallback: if only INR balance exists, convert at fixed 1 USD = 85 INR
-    const primary = j.result?.[0];
-    const usdDirect = parseFloat(primary?.available_balance || primary?.balance || 0);
-    const inrFallback = parseFloat(primary?.available_balance_inr || primary?.balance_inr || 0);
-    _balance = usdDirect > 0 ? usdDirect : (inrFallback > 0 ? inrFallback / 85 : 0);
-    _balanceSym = '$';
-    el.textContent = '$' + _balance.toLocaleString('en-IN', {maximumFractionDigits:2});
-    refreshPositions();
-  } catch(e) {
-    el.style.fontSize = '11px'; el.style.color = 'var(--red)';
-    const isCors = e.name === 'TypeError' || e.message === 'Failed to fetch';
-    if (isCors) {
-      el.textContent = 'CORS — use localhost';
-      document.getElementById('delta-key-status').textContent = '⚠ Open via http://localhost:8091/delta_ohlcv_downloader.html';
-    } else {
-      el.textContent = e.message || 'Error';
+    if (!outputs[sym]?.algoData) {
+      const data = await computeAlgo(sym);
+      outputs[sym].algoData = data;
     }
-  }
-}
-
-async function refreshPositions() {
-  try {
-    const j = await deltaRequest('GET', '/v2/positions', {});
-    const newPositions = (j.result || []).filter(p => Math.abs(p.size) > 0);
-    // Enrich product symbol from productMap if API doesn't return product object
-    if (!Object.keys(_productMap).length) await loadProducts();
-    newPositions.forEach(p => {
-      if (!p.product?.symbol && !p.product_symbol) {
-        const sym = Object.keys(_productMap).find(k => _productMap[k].id === p.product_id);
-        if (sym) p.product_symbol = sym;
-      }
-    });
-    const newIds = new Set(newPositions.map(p => p.product_id));
-    for (const pid of _prevPosIds) {
-      if (!newIds.has(pid)) {
-        const closed = _positions.find(p => p.product_id === pid);
-        await journalAutoClose(pid, parseFloat(closed?.mark_price || 0), parseFloat(closed?.unrealized_pnl || 0));
-      }
-    }
-    _prevPosIds = newIds;
-    _positions = newPositions;
-    renderPositions();
-    checkPendingBrackets();
-    if (Object.keys(_tpState).length) manageTpLevels();
-    checkDailyLimit();
+    await sendTelegramAlert(formatAlgoForTelegram(sym, outputs[sym].algoData));
+    btn.textContent = '✓'; btn.style.color = 'var(--green)';
   } catch(e) {
-    logAuto('Positions error: ' + e.message, 'err');
+    btn.textContent = '✗'; btn.style.color = 'var(--red)';
+    alert('Telegram error: ' + e.message);
   }
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 3000);
 }
 
-function renderPositions() {
-  const grid    = document.getElementById('pos-grid');
-  const section = document.getElementById('positions-section');
-  const countEl = document.getElementById('acct-pos-count');
-  const pnlEl   = document.getElementById('acct-pnl');
-  if (!grid || !section) return;
-
-  if (countEl) countEl.textContent = _positions.length || '0';
-  const totalPnl = _positions.reduce((s, p) => s + parseFloat(p.unrealized_pnl || 0), 0);
-  if (pnlEl) {
-    pnlEl.textContent = (totalPnl >= 0 ? '+$' : '-$') + Math.abs(totalPnl).toLocaleString('en-IN', {maximumFractionDigits:2});
-    pnlEl.style.color = totalPnl > 0.01 ? 'var(--green)' : totalPnl < -0.01 ? 'var(--red)' : '';
-  }
-
-  if (!_positions.length) { section.style.display = 'none'; return; }
-  section.style.display = 'flex';
-
-  grid.innerHTML = _positions.map(p => {
-    const side   = p.size > 0;
-    const pnl    = parseFloat(p.unrealized_pnl || 0);
-    const ep     = parseFloat(p.entry_price || 0);
-    const mp     = parseFloat(p.mark_price  || 0);
-    const liq    = parseFloat(p.liquidation_price || 0);
-    const margin = parseFloat(p.initial_margin || p.margin || 0);
-    const roe    = ep ? ((mp - ep) / ep * 100 * (side ? 1 : -1)) : 0;
-    const pnlStr  = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toLocaleString('en-IN', {maximumFractionDigits:2});
-    const closeSide = side ? 'sell' : 'buy';
-    return `<tr id="pos-${p.product_id}">
-      <td>
-        <div class="pos-sym-cell">
-          <span class="pos-sym">${p.product?.symbol || p.product_symbol || '—'}</span>
-          <span class="pos-dir-badge ${side?'lng':'sht'}">${side?'LONG':'SHORT'}</span>
-        </div>
-      </td>
-      <td>${Math.abs(p.size)}</td>
-      <td>${F(ep)}</td>
-      <td>${F(mp)}</td>
-      <td style="color:var(--text3)">${liq > 0 ? F(liq) : '—'}</td>
-      <td style="color:var(--text3)">${margin > 0 ? '$' + margin.toLocaleString('en-IN',{maximumFractionDigits:2}) : '—'}</td>
-      <td class="pos-pnl ${pnl>=0?'up':'dn'}">${pnlStr}</td>
-      <td class="pos-roe ${roe>=0?'up':'dn'}">${roe>=0?'+':''}${roe.toFixed(2)}%</td>
-      <td><button class="btn-close-pos" onclick="closePosition(${p.product_id},'${closeSide}',${Math.abs(p.size)})">Close</button></td>
-    </tr>`;
-  }).join('');
-}
-
-async function checkPendingBrackets() {
-  for (const pos of _positions) {
-    const pid = pos.product_id;
-    if (!_pendingBrackets[pid] || _pendingBrackets[pid].bracketPlaced) continue;
-    const {sl, tp1} = _pendingBrackets[pid];
+async function sendAllAlertsToTelegram(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Sending…';
+  let sent = 0;
+  for (const sym of SYMS) {
     try {
-      await deltaRequest('POST', '/v2/orders/bracket', {}, {
-        product_id: pid,
-        stop_loss_order:   {order_type:'market_order', stop_price: sl.toFixed(2)},
-        take_profit_order: {order_type:'limit_order',  stop_price: tp1.toFixed(2), limit_price: tp1.toFixed(2)},
-        bracket_stop_trigger_method: 'last_traded_price',
-      });
-      _pendingBrackets[pid].bracketPlaced = true;
+      const data = await computeAlgo(sym);
+      outputs[sym].algoData = data;
+      await sendTelegramAlert(formatAlgoForTelegram(sym, data));
+      sent++;
+      await new Promise(r => setTimeout(r, 600));
     } catch {}
   }
+  btn.disabled = false; btn.textContent = `✓ Sent ${sent}/${SYMS.length}`;
+  setTimeout(() => { btn.textContent = orig; }, 4000);
 }
 
-async function closePosition(productId, closeSide, size) {
-  if (!confirm(`Close position at market price?`)) return;
+async function sendSetupAlert(sym, idx) {
+  const data = outputs[sym]?.algoData;
+  if (!data) { alert('Run analysis first'); return; }
+  const s = data.setups?.[idx];
+  if (!s) return;
+  const {fvg, entry, sl, tps, lng} = s;
+  const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
+  const now = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  const msg = `📣 <b>JARVIS Alert — ${sym}</b>\n`
+    + `${lng ? '🟢 LONG' : '🔴 SHORT'}  Grade <b>${fvg.grade}</b>  ${fvg.tf} FVG${fvg.swept ? ' ✓ Swept' : ''}\n\n`
+    + `📍 Entry zone: <b>${F(fvg.gL)} – ${F(fvg.gH)}</b>  (CE: ${F(entry)})\n`
+    + `🛑 SL: <b>${F(sl)}</b>  (${slPct}%)\n`
+    + `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`
+    + `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`
+    + `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`
+    + `\n<i>via JARVIS · ${now} IST</i>`;
   try {
-    const posInfo = _positions.find(p => p.product_id === productId);
-    await deltaRequest('POST', '/v2/orders', {}, {
-      product_id: productId, size, side: closeSide, order_type: 'market_order',
-    });
-    // Update journal entry
-    const exitPx  = parseFloat(posInfo?.mark_price || 0);
-    const realPnl = parseFloat(posInfo?.unrealized_pnl || 0);
-    const entry = _journal.filter(t => t.productId === productId && t.status === 'open').pop();
-    if (entry) {
-      const roe = entry.entry ? ((exitPx - entry.entry) / entry.entry * 100 * (entry.direction === 'LONG' ? 1 : -1)) : 0;
-      await journalUpdate(entry.id, {
-        status: 'closed', closedAt: new Date().toISOString(),
-        exitPrice: exitPx, realizedPnl: realPnl,
-        roePercent: parseFloat(roe.toFixed(2)), closeReason: 'manual',
-      });
-    }
-    setTimeout(refreshPositions, 1500);
-  } catch(e) { alert('Error: ' + e.message); }
+    await sendTelegramAlert(msg);
+  } catch(e) { alert('Telegram error: ' + e.message); }
 }
-
-function startPositionPolling() {
-  if (_posPollTimer) clearInterval(_posPollTimer);
-  if (localStorage.getItem('delta_key')) refreshPositions();
-  _posPollTimer = setInterval(() => {
-    if (localStorage.getItem('delta_key')) refreshPositions();
-  }, 5000);
-}
-
-// ── Trade Modal ───────────────────────────────────────────────────────────────
-let _pendingTrade = null;
-
-function openTradeModal(sym, idx) {
-  const setup = outputs[sym]?.setups?.[idx];
-  if (!setup) return;
-  if (!_balance) { alert('Balance not loaded — click ↻ Refresh on the Dashboard to connect.'); return; }
-
-  const {entry, sl, tps, lng} = setup;
-  const side     = lng ? 'buy' : 'sell';
-  const riskPct  = parseFloat(localStorage.getItem('delta_risk')     || document.getElementById('risk-pct').value  || '3');
-  const leverage = parseFloat(localStorage.getItem('delta_leverage') || document.getElementById('leverage').value   || '10');
-  const slDist   = Math.abs(entry - sl);
-  const maxLoss  = _balance * (riskPct / 100);
-  const contracts = Math.max(1, Math.floor(maxLoss / slDist));
-  const marginReq = contracts / leverage;
-  const pid = _productMap[sym]?.id;
-
-  _pendingTrade = {sym, side, contracts, entry, sl, tps, pid, setup, riskPct, leverage, maxLoss,
-    b4h: outputs[sym]?.b4h, b1h: outputs[sym]?.b1h};
-
-  document.getElementById('trade-modal-box').innerHTML = `
-    <div class="modal-title">⚡ ${sym}.P &mdash; ${lng ? '🟢 LONG' : '🔴 SHORT'}</div>
-    <div class="modal-row"><span class="modal-lbl">Direction</span><span class="modal-val ${lng?'long':'short'}">${lng?'LONG':'SHORT'}</span></div>
-    <div class="modal-row"><span class="modal-lbl">Entry (limit @ CE)</span><span class="modal-val">${F(entry)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">Stop Loss</span><span class="modal-val short">${F(sl)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">TP1 &nbsp;${RR(tps[0].rr)}</span><span class="modal-val">${F(tps[0].p)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">TP2 &nbsp;${RR(tps[1].rr)}</span><span class="modal-val">${F(tps[1].p)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">TP3 &nbsp;${RR(tps[2].rr)}</span><span class="modal-val">${F(tps[2].p)}</span></div>
-    <div class="modal-sep"></div>
-    <div class="modal-row"><span class="modal-lbl">Contracts (size)</span><span class="modal-val">${contracts.toLocaleString('en-IN')}</span></div>
-    <div class="modal-row"><span class="modal-lbl">Max loss at SL (${riskPct}%)</span><span class="modal-val short">≈ ${_balanceSym}${F(maxLoss)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">Margin req. (${leverage}x lev.)</span><span class="modal-val">≈ ${_balanceSym}${F(marginReq)}</span></div>
-    <div class="modal-row"><span class="modal-lbl">Available balance</span><span class="modal-val">${_balanceSym}${F(_balance)}</span></div>
-    ${!pid ? `<div class="modal-warn">⚠ Product ID not found for ${sym} yet — products are still loading. Try again in a moment.</div>` : ''}
-    <div class="modal-warn">Limit order placed at CE. Once position opens, bracket (SL + TP1) is set automatically. Watch the Positions panel.</div>
-    <div class="modal-actions">
-      <button class="btn btn-save" id="modal-confirm-btn" style="flex:2;padding:10px 0;font-size:12px" onclick="confirmTrade()">Confirm &amp; Place Order</button>
-      <button class="btn" style="flex:1;padding:10px 0;border-color:var(--border2);color:var(--text3);font-size:12px" onclick="closeModal()">Cancel</button>
-    </div>
-    <div class="modal-status" id="modal-status"></div>`;
-  document.getElementById('trade-modal').style.display = 'flex';
-}
-
-function closeModal() { document.getElementById('trade-modal').style.display = 'none'; _pendingTrade = null; }
-
-async function confirmTrade() {
-  if (!_pendingTrade) return;
-  const btn      = document.getElementById('modal-confirm-btn');
-  const statusEl = document.getElementById('modal-status');
-  btn.disabled = true; btn.textContent = 'Placing order…';
-  const {sym, side, contracts, entry, sl, tps, pid} = _pendingTrade;
-  try {
-    if (!pid) throw new Error(`Product ID not found for ${sym} — wait a moment and retry`);
-    const res = await deltaRequest('POST', '/v2/orders', {}, {
-      product_id: pid,
-      size: contracts,
-      side,
-      order_type: 'limit_order',
-      limit_price: entry.toFixed(2),
-      time_in_force: 'gtc',
-    });
-    const oid = res.result?.id;
-    _pendingBrackets[pid] = {sl, tp1: tps[0].p, bracketPlaced: false};
-    // Register TP state for partial management
-    _tpState[pid] = {entry, sl, tp1: tps[0].p, tp2: tps[1].p, tp3: tps[2].p,
-      lng: side === 'buy', contracts, origContracts: contracts,
-      tp1Hit: false, tp2Hit: false, tp3Hit: false, closing: false, slOrderId: null};
-    _openOrders[oid] = {productId: pid, sym, placedAt: Date.now(), contracts, lng: side === 'buy'};
-    // Save to trade journal
-    const fvg = _pendingTrade.setup?.fvg;
-    await journalAdd({
-      id: Date.now(), orderId: oid, productId: pid,
-      openedAt: new Date().toISOString(), closedAt: null,
-      sym, direction: side === 'buy' ? 'LONG' : 'SHORT',
-      entry, sl,
-      tp1: tps[0].p, tp2: tps[1].p, tp3: tps[2].p,
-      rr1: tps[0].rr, rr2: tps[1].rr, rr3: tps[2].rr,
-      contracts, capitalAtTrade: _balance,
-      riskPct: _pendingTrade.riskPct, leverage: _pendingTrade.leverage,
-      maxRisk: _pendingTrade.maxLoss, maxRiskSym: _balanceSym,
-      setupGrade: fvg?.grade || '—', setupType: fvg?.type === 'bull' ? 'Bull FVG' : 'Bear FVG',
-      setupTf: fvg?.tf || '—', fvgHigh: fvg?.gH, fvgLow: fvg?.gL, fvgCE: fvg?.ce,
-      swept: fvg?.swept, bias4h: _pendingTrade.b4h, bias1h: _pendingTrade.b1h,
-      status: 'open', exitPrice: null, realizedPnl: null, roePercent: null, closeReason: null,
-    });
-    statusEl.style.color = 'var(--green)';
-    statusEl.textContent = `✓ Order #${oid} placed — monitoring for fill`;
-    btn.textContent = '✓ Done';
-    saveOrderState();
-    startPositionPolling();
-    refreshBalance();
-    setTimeout(closeModal, 2500);
-  } catch(e) {
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = `✗ ${e.message}`;
-    btn.disabled = false; btn.textContent = 'Retry';
-  }
-}
-
-async function testDeltaConnection() {
-  const statusEl = document.getElementById('delta-key-status');
-  statusEl.style.color = 'var(--text2)';
-  statusEl.innerHTML = 'Testing…';
-
-  const k = localStorage.getItem('delta_key')    || '';
-  const s = localStorage.getItem('delta_secret') || '';
-
-  if (!k || !s) { statusEl.innerHTML = '⚠ No credentials saved — fill in Key + Secret and click Save first.'; return; }
-
-  // Show what we have
-  const lines = [
-    `Key: ${k.slice(0,8)}… (${k.length} chars)`,
-    `Secret: ${s.slice(0,4)}… (${s.length} chars)`,
-  ];
-
-  // Verify HMAC produces expected length (64 hex chars = 32 bytes SHA-256)
-  const testSig = await deltaHmac('test_secret', 'test_message');
-  lines.push(`HMAC self-test: ${testSig.length === 64 ? '✓ OK' : '✗ FAIL'} (${testSig.length} chars)`);
-
-  // Try the actual API call and show raw response
-  try {
-    const ts      = Math.floor(Date.now() / 1000).toString();
-    const sigData = 'GET' + ts + '/v2/wallet/balances';
-    const sig     = await deltaHmac(s, sigData);
-    lines.push(`Timestamp: ${ts}`);
-    lines.push(`Sig input: "${sigData}"`);
-    lines.push(`Sig (first 16): ${sig.slice(0,16)}…`);
-
-    const res  = await fetch('https://api.india.delta.exchange/v2/wallet/balances', {
-      headers: { 'api-key': k, 'timestamp': ts, 'signature': sig, 'User-Agent': 'rest-client', 'Content-Type': 'application/json' }
-    });
-    const json = await res.json();
-    lines.push(`HTTP: ${res.status} | success: ${json.success}`);
-    if (!json.success) lines.push(`Error: ${json.error?.code || JSON.stringify(json.error)}`);
-    else {
-      const usdt = json.result?.find(b => b.asset_symbol === 'USDT');
-      lines.push(`✓ Connected! USDT balance: $${usdt?.available_balance || '0'}`);
-      statusEl.style.color = 'var(--green)';
-      _balance = parseFloat(usdt?.available_balance || 0);
-      document.getElementById('acct-balance').textContent = '$' + _balance.toLocaleString('en-IN', {maximumFractionDigits:2});
-    }
-  } catch(e) {
-    lines.push(`Fetch error: ${e.message}`);
-  }
-
-  console.log('[JARVIS Delta Test]\n' + lines.join('\n'));
-  statusEl.innerHTML = lines.map(l => `<span>${l}</span>`).join('<br>');
-}
-
-function saveDeltaKeys() {
-  const k = document.getElementById('delta-key').value.trim();
-  const s = document.getElementById('delta-secret').value.trim();
-  if (!k || !s) { document.getElementById('delta-key-status').textContent = 'Both key and secret are required'; return; }
-  localStorage.setItem('delta_key', k);
-  localStorage.setItem('delta_secret', s);
-  localStorage.setItem('delta_risk',     document.getElementById('risk-pct').value);
-  localStorage.setItem('delta_leverage', document.getElementById('leverage').value);
-  document.getElementById('delta-key-status').textContent = 'Saved ✓';
-  loadProducts();
-  refreshBalance();
-  startPositionPolling();
-}
-
-// ── Automation Engine ─────────────────────────────────────────────────────────
-
-function getAutoSyms() {
-  const saved = localStorage.getItem('auto_syms');
-  if (saved) return JSON.parse(saved);
-  return [...SYMS]; // default: all
-}
-
-function toggleAutoSym(sym) {
-  const el   = document.getElementById(`asc-${sym}`);
-  const syms = getAutoSyms();
-  const idx  = syms.indexOf(sym);
-  if (idx >= 0) {
-    if (syms.length === 1) return; // keep at least one
-    syms.splice(idx, 1);
-    el?.classList.remove('on');
-  } else {
-    syms.push(sym);
-    el?.classList.add('on');
-  }
-  localStorage.setItem('auto_syms', JSON.stringify(syms));
-}
-
-function restoreAutoSymUI() {
-  const syms = getAutoSyms();
-  SYMS.forEach(s => {
-    const el = document.getElementById(`asc-${s}`);
-    if (el) el.classList.toggle('on', syms.includes(s));
-  });
-}
-
-function autoSettings() {
-  return {
-    staleMin:     parseFloat(document.getElementById('auto-stale-min')?.value  || localStorage.getItem('auto_stale_min')  || 60),
-    dailyLossPct: parseFloat(document.getElementById('auto-daily-loss')?.value || localStorage.getItem('auto_daily_loss') || 5),
-  };
-}
-
-function logAuto(msg, cls = '') {
-  const el = document.getElementById('auto-log');
-  if (!el) return;
-  const ts   = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  const line = document.createElement('div');
-  line.className = 'auto-log-line' + (cls ? ' ' + cls : '');
-  line.textContent = `[${ts}]  ${msg}`;
-  el.insertBefore(line, el.firstChild);
-  while (el.children.length > 60) el.removeChild(el.lastChild);
-}
-
-function updateAutoUI() {
-  const btn   = document.getElementById('auto-toggle-btn');
-  const badge = document.getElementById('auto-mode-badge');
-  const stTxt = document.getElementById('auto-status-txt');
-  if (btn) {
-    btn.textContent   = _autoMode ? '🔴 Stop Auto Mode' : '🟢 Start Auto Mode';
-    btn.style.borderColor  = _autoMode ? 'rgba(255,68,102,.4)'   : 'rgba(0,229,168,.4)';
-    btn.style.color        = _autoMode ? 'var(--red)'             : 'var(--green)';
-    btn.style.background   = _autoMode ? 'rgba(255,68,102,.08)'  : 'rgba(0,229,168,.08)';
-  }
-  if (badge) badge.classList.toggle('on', _autoMode);
-  if (stTxt) stTxt.textContent = _autoMode ? (_dailyLimitHit ? 'HALTED — daily limit' : 'Running') : 'Idle';
-}
-
-function updateAutoStats() {
-  const today    = new Date().toDateString();
-  const todayPnl = loadJournal()
-    .filter(t => new Date(t.openedAt).toDateString() === today && t.realizedPnl != null)
-    .reduce((s, t) => s + (t.realizedPnl || 0), 0);
-  const pnlEl = document.getElementById('auto-daily-pnl');
-  if (pnlEl) { pnlEl.textContent = (todayPnl >= 0 ? '+$' : '-$') + Math.abs(todayPnl).toFixed(2);
-    pnlEl.style.color = todayPnl > 0 ? 'var(--green)' : todayPnl < 0 ? 'var(--red)' : ''; }
-  const ordEl = document.getElementById('auto-open-orders');
-  if (ordEl) ordEl.textContent = Object.keys(_openOrders).length;
-}
-
-function checkDailyLimit() {
-  if (!_balance) return;
-  const { dailyLossPct } = autoSettings();
-  const today    = new Date().toDateString();
-  const todayPnl = loadJournal()
-    .filter(t => new Date(t.openedAt).toDateString() === today && t.realizedPnl != null)
-    .reduce((s, t) => s + (t.realizedPnl || 0), 0);
-  const limit = -_balance * (dailyLossPct / 100);
-  const wasHit = _dailyLimitHit;
-  _dailyLimitHit = todayPnl <= limit;
-  if (_dailyLimitHit && !wasHit) {
-    logAuto(`🛑 Daily loss limit hit ($${todayPnl.toFixed(2)}). Auto trading halted.`, 'err');
-    tgAlert('daily_limit', {loss: Math.abs(todayPnl), limit: Math.abs(limit)});
-    updateAutoUI();
-  }
-  updateAutoStats();
-}
-
-function canAutoTrade(sym) {
-  if (!localStorage.getItem('delta_key'))           return {ok:false, reason:'No API keys'};
-  if (!_balance)                                     return {ok:false, reason:'Balance not loaded'};
-  if (_dailyLimitHit)                                return {ok:false, reason:'Daily loss limit reached'};
-  if (_positions.some(p => (p.product?.symbol || p.product_symbol || '').startsWith(sym)))
-                                                     return {ok:false, reason:'Position already open'};
-  if (Object.values(_openOrders).some(o => o.sym === sym))
-                                                     return {ok:false, reason:'Order already pending'};
-  if (loadJournal().some(t => t.sym === sym && t.status === 'open'))
-                                                     return {ok:false, reason:'Open trade in journal'};
-  return {ok:true};
-}
-
-async function autoPlaceTrade(sym, setup) {
-  const {entry, sl, tps, lng, fvg} = setup;
-  const side      = lng ? 'buy' : 'sell';
-  const riskPct   = parseFloat(localStorage.getItem('delta_risk')     || '3');
-  const leverage  = parseFloat(localStorage.getItem('delta_leverage') || '10');
-  const slDist    = Math.abs(entry - sl);
-  const maxLoss   = _balance * (riskPct / 100);
-  const contracts = Math.max(1, Math.floor(maxLoss / slDist));
-  const pid       = _productMap[sym]?.id;
-  if (!pid) { logAuto(`${sym}: product ID not found — skipping`, 'warn'); return; }
-
-  const res = await deltaRequest('POST', '/v2/orders', {}, {
-    product_id: pid, size: contracts, side,
-    order_type: 'limit_order', limit_price: entry.toFixed(2), time_in_force: 'gtc',
-  });
-  const oid = res.result?.id;
-
-  _openOrders[oid] = {productId: pid, sym, placedAt: Date.now(), contracts, lng};
-  _tpState[pid]    = {entry, sl, tp1: tps[0].p, tp2: tps[1].p, tp3: tps[2].p,
-    lng, contracts, origContracts: contracts,
-    tp1Hit: false, tp2Hit: false, tp3Hit: false, closing: false, slOrderId: null};
-
-  await journalAdd({
-    id: Date.now(), orderId: oid, productId: pid,
-    openedAt: new Date().toISOString(), closedAt: null,
-    sym, direction: lng ? 'LONG' : 'SHORT',
-    entry, sl, tp1: tps[0].p, tp2: tps[1].p, tp3: tps[2].p,
-    rr1: tps[0].rr, rr2: tps[1].rr, rr3: tps[2].rr,
-    contracts, capitalAtTrade: _balance, riskPct, leverage,
-    maxRisk: maxLoss, maxRiskSym: '$',
-    setupGrade: fvg?.grade || '—', setupType: fvg?.type === 'bull' ? 'Bull FVG' : 'Bear FVG',
-    setupTf: fvg?.tf || '—', fvgHigh: fvg?.gH, fvgLow: fvg?.gL, fvgCE: fvg?.ce,
-    swept: fvg?.swept, bias4h: outputs[sym]?.b4h, bias1h: outputs[sym]?.b1h,
-    status: 'open', exitPrice: null, realizedPnl: null, roePercent: null, closeReason: null, autoPlaced: true,
-  });
-
-  logAuto(`✅ ${sym} ${lng?'LONG':'SHORT'} — ${contracts}x @ ${entry} | Order #${oid}`, 'ok');
-  tgAlert('trade_opened', {sym, side, entry, sl, tp1: tps[0].p, contracts, risk: maxLoss,
-    grade: fvg?.grade, tf: fvg?.tf});
-  saveOrderState();
-}
-
-async function autoScanAll() {
-  if (!_autoMode || _dailyLimitHit) return;
-  const selected = getAutoSyms();
-  logAuto(`🔍 Scanning: ${selected.join(', ')}`);
-  await refreshBalance();
-  for (const sym of selected) {
-    if (!isMarketOpen(sym)) { logAuto(`${sym}: market closed`); continue; }
-    try {
-      await runAlgo(sym);
-      const setups = outputs[sym]?.setups || [];
-      const best   = setups.find(s => s.fvg.grade === 'A') || setups.find(s => s.fvg.grade === 'B');
-      if (!best) { logAuto(`${sym}: no setup`); continue; }
-      const guard = canAutoTrade(sym);
-      if (!guard.ok) { logAuto(`${sym}: ${guard.reason}`, 'warn'); continue; }
-      if (localStorage.getItem('auto_ai_confirm') === '1') {
-        logAuto(`${sym}: asking AI…`);
-        const aiCheck = await askAIFilter(sym, best);
-        if (!aiCheck.ok) {
-          logAuto(`${sym}: AI vetoed — ${aiCheck.reason}`, 'warn');
-          tgAlert('ai_veto', {sym, reason: aiCheck.reason});
-          continue;
-        }
-        logAuto(`${sym}: AI confirmed — ${aiCheck.reason}`, 'ok');
-      }
-      await autoPlaceTrade(sym, best);
-    } catch(e) { logAuto(`${sym}: ${e.message}`, 'err'); }
-    await new Promise(r => setTimeout(r, 600));
-  }
-}
-
-function scheduleNextScan() {
-  if (!_autoMode) return;
-  if (_autoTimer) clearTimeout(_autoTimer);
-  const now      = Date.now();
-  const ms15     = 15 * 60 * 1000;
-  const nextClose= (Math.floor(now / ms15) + 1) * ms15 + 10000;
-  const delay    = nextClose - now;
-  const nextEl   = document.getElementById('auto-next-scan');
-  if (nextEl) nextEl.textContent = Math.round(delay / 1000) + 's';
-  _autoTimer = setTimeout(async () => {
-    await autoScanAll();
-    scheduleNextScan();
-  }, delay);
-  // Update countdown every 10s
-  const tick = setInterval(() => {
-    if (!_autoMode) { clearInterval(tick); return; }
-    const rem = Math.round((nextClose - Date.now()) / 1000);
-    if (nextEl) nextEl.textContent = rem > 0 ? rem + 's' : 'Scanning…';
-    if (rem <= 0) clearInterval(tick);
-  }, 10000);
-  logAuto(`Next scan in ${Math.round(delay/1000)}s`);
-}
-
-function toggleAutoMode() {
-  if (_autoMode) {
-    _autoMode = false;
-    if (_autoTimer) { clearTimeout(_autoTimer); _autoTimer = null; }
-    localStorage.setItem('auto_mode', 'off');
-    logAuto('🔴 Auto mode stopped', 'err');
-  } else {
-    if (!localStorage.getItem('delta_key')) { alert('Set Delta API keys in Settings first.'); return; }
-    _autoMode = true;
-    localStorage.setItem('auto_mode', 'on');
-    localStorage.setItem('auto_stale_min',  document.getElementById('auto-stale-min')?.value  || '60');
-    localStorage.setItem('auto_daily_loss', document.getElementById('auto-daily-loss')?.value || '5');
-    logAuto('🟢 Auto mode started — waiting for next 15M candle close', 'ok');
-    scheduleNextScan();
-  }
-  updateAutoUI();
-}
-
-// ── Order fill polling ────────────────────────────────────────────────────────
-async function pollOpenOrders() {
-  if (!Object.keys(_openOrders).length) return;
-  const { staleMin } = autoSettings();
-  for (const [oid, info] of Object.entries(_openOrders)) {
-    try {
-      const res   = await deltaRequest('GET', `/v2/orders/${oid}`);
-      const order = res.result;
-      if (order.state === 'filled') {
-        logAuto(`✅ Order #${oid} (${info.sym}) filled — placing SL`, 'ok');
-        await onOrderFilled(oid, info);
-        delete _openOrders[oid]; saveOrderState();
-        updateAutoStats();
-      } else if (order.state === 'cancelled') {
-        logAuto(`Order #${oid} cancelled externally`, 'warn');
-        delete _openOrders[oid]; saveOrderState();
-        const entry = _journal.find(t => String(t.orderId)===String(oid) && t.status==='open');
-        if (entry) await journalUpdate(entry.id, {status:'cancelled', closeReason:'external', closedAt: new Date().toISOString()});
-      } else if (Date.now() - info.placedAt > staleMin * 60000) {
-        await deltaRequest('DELETE', `/v2/orders/${oid}`);
-        logAuto(`⏱ Stale order #${oid} (${info.sym}) cancelled after ${staleMin}min`, 'warn');
-        tgAlert('stale_cancelled', {sym: info.sym});
-        delete _openOrders[oid]; saveOrderState();
-        const entry = _journal.find(t => String(t.orderId)===String(oid) && t.status==='open');
-        if (entry) await journalUpdate(entry.id, {status:'cancelled', closeReason:'stale', closedAt: new Date().toISOString()});
-      }
-    } catch(e) { /* order may already be gone */ }
-  }
-}
-
-async function onOrderFilled(oid, info) {
-  const { productId: pid, contracts, lng } = info;
-  const tp = _tpState[pid];
-  if (!tp) return;
-  const slSide = lng ? 'sell' : 'buy';
-  try {
-    const res = await deltaRequest('POST', '/v2/orders', {}, {
-      product_id: pid, size: contracts, side: slSide,
-      order_type: 'stop_market_order', stop_price: tp.sl.toFixed(2),
-      stop_trigger_method: 'last_traded_price', close_on_trigger: true,
-    });
-    tp.slOrderId = res.result?.id;
-    _slOrders[pid] = {orderId: tp.slOrderId, price: tp.sl};
-    logAuto(`SL placed @ ${tp.sl} for ${info.sym}`, 'ok');
-    tgAlert('order_filled', {sym: info.sym, price: tp.entry});
-    saveOrderState();
-  } catch(e) { logAuto(`SL placement failed: ${e.message}`, 'err'); }
-}
-
-async function moveSL(pid, newPrice, sym) {
-  const existing = _slOrders[pid];
-  if (existing?.orderId) {
-    try { await deltaRequest('DELETE', `/v2/orders/${existing.orderId}`); } catch {}
-  }
-  const tp = _tpState[pid];
-  if (!tp) return;
-  const side = tp.lng ? 'sell' : 'buy';
-  try {
-    const res = await deltaRequest('POST', '/v2/orders', {}, {
-      product_id: pid, side,
-      order_type: 'stop_market_order', stop_price: newPrice.toFixed(2),
-      stop_trigger_method: 'last_traded_price', close_on_trigger: true,
-    });
-    _slOrders[pid] = {orderId: res.result?.id, price: newPrice};
-    tp.slOrderId   = res.result?.id;
-    logAuto(`SL moved → ${newPrice} (${sym})`, 'ok');
-    saveOrderState();
-  } catch(e) { logAuto(`SL move failed: ${e.message}`, 'err'); }
-}
-
-// ── Partial TP management ─────────────────────────────────────────────────────
-async function manageTpLevels() {
-  for (const pos of _positions) {
-    const pid = pos.product_id;
-    const tp  = _tpState[pid];
-    if (!tp || tp.closing) continue;
-    const mark      = parseFloat(pos.mark_price);
-    const remaining = Math.abs(pos.size);
-    const lng       = tp.lng;
-    const closeSide = lng ? 'sell' : 'buy';
-    const sym       = pos.product?.symbol || '';
-
-    // TP1 — close 50%, move SL to breakeven
-    if (!tp.tp1Hit && ((lng && mark >= tp.tp1) || (!lng && mark <= tp.tp1))) {
-      const qty = Math.max(1, Math.floor(remaining * 0.5));
-      tp.closing = true;
-      try {
-        await deltaRequest('POST', '/v2/orders', {}, {product_id: pid, size: qty, side: closeSide, order_type: 'market_order'});
-        tp.tp1Hit   = true; tp.contracts = remaining - qty; tp.closing = false;
-        logAuto(`🎯 TP1 hit (${sym}) — closed ${qty}, SL → breakeven`, 'ok');
-        tgAlert('tp1_hit', {sym, qty, price: mark, remaining: tp.contracts});
-        await moveSL(pid, tp.entry, sym);
-        saveOrderState();
-      } catch(e) { tp.closing = false; logAuto(`TP1 close error: ${e.message}`, 'err'); }
-    }
-    // TP2 — close 50% of remaining (25% total), move SL to TP1
-    else if (tp.tp1Hit && !tp.tp2Hit && ((lng && mark >= tp.tp2) || (!lng && mark <= tp.tp2))) {
-      const qty = Math.max(1, Math.floor(remaining * 0.5));
-      tp.closing = true;
-      try {
-        await deltaRequest('POST', '/v2/orders', {}, {product_id: pid, size: qty, side: closeSide, order_type: 'market_order'});
-        tp.tp2Hit   = true; tp.contracts = remaining - qty; tp.closing = false;
-        logAuto(`🎯 TP2 hit (${sym}) — closed ${qty}, SL → TP1`, 'ok');
-        tgAlert('tp2_hit', {sym, qty, price: mark, remaining: tp.contracts});
-        await moveSL(pid, tp.tp1, sym);
-        saveOrderState();
-      } catch(e) { tp.closing = false; logAuto(`TP2 close error: ${e.message}`, 'err'); }
-    }
-    // TP3 — close all remaining
-    else if (tp.tp1Hit && tp.tp2Hit && !tp.tp3Hit && ((lng && mark >= tp.tp3) || (!lng && mark <= tp.tp3))) {
-      tp.closing = true;
-      try {
-        await deltaRequest('POST', '/v2/orders', {}, {product_id: pid, size: remaining, side: closeSide, order_type: 'market_order'});
-        tp.tp3Hit = true; tp.closing = false;
-        logAuto(`🎯 TP3 hit (${sym}) — full position closed`, 'ok');
-        tgAlert('tp3_hit', {sym, qty: remaining, price: mark, pnl: parseFloat(pos.unrealized_pnl||0)});
-        delete _tpState[pid]; delete _slOrders[pid]; saveOrderState();
-      } catch(e) { tp.closing = false; logAuto(`TP3 close error: ${e.message}`, 'err'); }
-    }
-  }
-}
-
-function startOrderPolling() {
-  if (_orderPollTimer) clearInterval(_orderPollTimer);
-  _orderPollTimer = setInterval(() => {
-    if (localStorage.getItem('delta_key')) pollOpenOrders();
-  }, 30000);
-}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Trade Journal ─────────────────────────────────────────────────────────────
 let _jnlFilter = 'week';
@@ -2653,9 +1639,9 @@ function loadJournal() { return _journal; }
 
 async function journalAdd(entry) {
   _journal.unshift(entry);
-  if (!_db) { logAuto('⚠ Firebase not set up — trade not saved permanently', 'warn'); return; }
+  if (!_db) { logTg('⚠ Firebase not set up — trade not saved permanently', 'warn'); return; }
   try { await _db.collection('jarvis_trades').doc(String(entry.id)).set(entry); }
-  catch(e) { logAuto(`Firebase write error: ${e.message}`, 'err'); }
+  catch(e) { logTg(`Firebase write error: ${e.message}`, 'err'); }
 }
 
 async function journalUpdate(id, updates) {
@@ -2663,7 +1649,7 @@ async function journalUpdate(id, updates) {
   if (t) Object.assign(t, updates);
   if (_db) {
     try { await _db.collection('jarvis_trades').doc(String(id)).update(updates); }
-    catch(e) { logAuto(`Firebase update error: ${e.message}`, 'err'); }
+    catch(e) { logTg(`Firebase update error: ${e.message}`, 'err'); }
   }
   renderJournal();
 }
@@ -2676,7 +1662,6 @@ async function journalAutoClose(productId, exitPrice, realizedPnl) {
     status: 'closed', closedAt: new Date().toISOString(),
     exitPrice, realizedPnl, roePercent: parseFloat(roe.toFixed(2)), closeReason: 'auto',
   });
-  if (realizedPnl < 0) tgAlert('sl_hit', {sym: entry.sym, pnl: realizedPnl});
 }
 
 function setJournalFilter(f) {
@@ -2691,6 +1676,120 @@ function journalFilteredTrades() {
   if (_jnlFilter === 'week')  return all.filter(t => now - new Date(t.openedAt).getTime() <= 7  * 86400000);
   if (_jnlFilter === 'month') return all.filter(t => now - new Date(t.openedAt).getTime() <= 30 * 86400000);
   return all;
+}
+
+function openLogTradeModal(sym, setupIdx) {
+  const el = document.getElementById('log-modal');
+  if (!el) return;
+  // Pre-fill from setup if provided
+  if (sym) {
+    const symSel = document.getElementById('lm-sym');
+    if (symSel) symSel.value = sym;
+    const data = outputs[sym]?.algoData;
+    if (data) {
+      document.getElementById('lm-mode').value = data.mode || _mode;
+      if (setupIdx != null && data.setups?.[setupIdx]) {
+        const s = data.setups[setupIdx];
+        document.getElementById('lm-dir').value   = s.dir === 'LONG' ? 'LONG' : 'SHORT';
+        document.getElementById('lm-grade').value = s.grade || 'B';
+        document.getElementById('lm-entry').value = s.entry?.toFixed?.(2) ?? '';
+        document.getElementById('lm-sl').value    = s.sl?.toFixed?.(2) ?? '';
+        document.getElementById('lm-tp1').value   = s.tp1?.toFixed?.(2) ?? '';
+        document.getElementById('lm-tp2').value   = s.tp2?.toFixed?.(2) ?? '';
+        document.getElementById('lm-tp3').value   = s.tp3?.toFixed?.(2) ?? '';
+      }
+    }
+  }
+  document.getElementById('lm-status').textContent = '';
+  el.style.display = 'flex';
+}
+
+function closeLogModal() {
+  const el = document.getElementById('log-modal');
+  if (el) el.style.display = 'none';
+}
+
+async function saveManualTrade() {
+  const sym   = document.getElementById('lm-sym').value;
+  const dir   = document.getElementById('lm-dir').value;
+  const mode  = document.getElementById('lm-mode').value;
+  const grade = document.getElementById('lm-grade').value;
+  const entry = parseFloat(document.getElementById('lm-entry').value);
+  const sl    = parseFloat(document.getElementById('lm-sl').value);
+  const tp1   = parseFloat(document.getElementById('lm-tp1').value) || null;
+  const tp2   = parseFloat(document.getElementById('lm-tp2').value) || null;
+  const tp3   = parseFloat(document.getElementById('lm-tp3').value) || null;
+  const size  = parseFloat(document.getElementById('lm-size').value) || null;
+  const notes = document.getElementById('lm-notes').value.trim();
+  const statusEl = document.getElementById('lm-status');
+
+  if (!sym || isNaN(entry) || isNaN(sl)) {
+    statusEl.textContent = '⚠ Entry and SL are required.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  const entry_obj = {
+    id: Date.now(), sym, direction: dir, mode, setupGrade: grade,
+    setupTf: mode === 'scalp' ? '15M' : '4H',
+    entry, sl, tp1, tp2, tp3,
+    contracts: size, notes,
+    bias4h: outputs[sym]?.b4h || null,
+    bias1h: outputs[sym]?.b1h || null,
+    status: 'open', openedAt: new Date().toISOString(),
+    exitPrice: null, realizedPnl: null, roePercent: null, closeReason: null,
+  };
+
+  statusEl.textContent = 'Saving…';
+  statusEl.style.color = 'var(--text3)';
+  await journalAdd(entry_obj);
+  statusEl.textContent = '✓ Saved!';
+  statusEl.style.color = 'var(--green)';
+  renderJournal();
+  setTimeout(closeLogModal, 800);
+}
+
+function openCloseModal(id) {
+  const trade = _journal.find(t => t.id === id);
+  if (!trade) return;
+  document.getElementById('cm-id').value = id;
+  document.getElementById('cm-exit').value = _livePrices[trade.sym]?.toFixed(2) ?? '';
+  document.getElementById('cm-status').textContent = '';
+  document.getElementById('close-modal').style.display = 'flex';
+}
+
+function closeCloseModal() {
+  document.getElementById('close-modal').style.display = 'none';
+}
+
+async function confirmCloseTrade() {
+  const id   = parseInt(document.getElementById('cm-id').value);
+  const exit = parseFloat(document.getElementById('cm-exit').value);
+  const statusEl = document.getElementById('cm-status');
+  if (isNaN(exit)) { statusEl.textContent = '⚠ Enter an exit price.'; statusEl.style.color='var(--red)'; return; }
+  const trade = _journal.find(t => t.id === id);
+  if (!trade) return;
+  const dir = trade.direction === 'LONG' ? 1 : -1;
+  const roe = trade.entry ? ((exit - trade.entry) / trade.entry * 100 * dir) : 0;
+  const pnl = trade.contracts ? ((exit - trade.entry) * trade.contracts * dir) : null;
+  statusEl.textContent = 'Saving…'; statusEl.style.color = 'var(--text3)';
+  await journalUpdate(id, {
+    status: 'closed', closedAt: new Date().toISOString(),
+    exitPrice: exit, realizedPnl: pnl ? parseFloat(pnl.toFixed(4)) : null,
+    roePercent: parseFloat(roe.toFixed(2)), closeReason: 'manual',
+  });
+  statusEl.textContent = '✓ Closed!'; statusEl.style.color = 'var(--green)';
+  setTimeout(closeCloseModal, 700);
+}
+
+async function deleteTrade(id) {
+  if (!confirm('Delete this trade entry?')) return;
+  _journal = _journal.filter(t => t.id !== id);
+  if (_db) {
+    try { await _db.collection('jarvis_trades').doc(String(id)).delete(); }
+    catch(e) { logTg(`Firebase delete error: ${e.message}`, 'err'); }
+  }
+  renderJournal();
 }
 
 function renderJournal() {
@@ -2717,7 +1816,7 @@ function renderJournal() {
   ).join('');
 
   if (!trades.length) {
-    tbody.innerHTML = `<tr><td colspan="17" class="jnl-empty">No trades in this period. Run the Algo, find a setup, and click ⚡ Trade This Setup.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="jnl-empty">No trades in this period. Run the algo, find a setup, and click 📝 Log Trade.</td></tr>`;
     return;
   }
 
@@ -2727,24 +1826,26 @@ function renderJournal() {
     const pnl  = t.realizedPnl != null ? ((t.realizedPnl >= 0 ? '+$' : '-$') + Math.abs(t.realizedPnl).toFixed(2)) : '—';
     const roe  = t.roePercent != null ? ((t.roePercent >= 0 ? '+' : '') + t.roePercent.toFixed(2) + '%') : '—';
     const pnlCls = t.realizedPnl > 0 ? 'up' : t.realizedPnl < 0 ? 'dn' : '';
+    const actions = t.status === 'open'
+      ? `<button class="abtn abtn-algo" style="font-size:10px;padding:3px 8px" onclick="openCloseModal(${t.id})">Close</button> `
+      : '';
     return `<tr>
       <td style="color:var(--text3)">${trades.length - i}</td>
       <td>${dateStr}</td>
       <td style="color:var(--text);font-weight:600">${t.sym}</td>
       <td><span class="jnl-badge ${t.direction==='LONG'?'lng':'sht'}">${t.direction}</span></td>
       <td><span class="jnl-badge ${t.setupGrade==='A'?'grade-a':'grade-b'}">${t.setupGrade || '—'}</span></td>
-      <td style="color:var(--text3)">${t.setupTf || '—'}</td>
+      <td style="color:var(--text3)">${t.mode || t.setupTf || '—'}</td>
       <td>${F(t.entry)}</td>
       <td style="color:var(--red)">${F(t.sl)}</td>
       <td style="color:var(--green)">${F(t.tp1)}</td>
       <td style="color:var(--green)">${F(t.tp2)}</td>
-      <td>${t.contracts}</td>
-      <td style="color:var(--text3)">${t.maxRisk ? (t.maxRiskSym||'$') + t.maxRisk.toFixed(2) : '—'}</td>
       <td style="color:var(--accent)">${t.status==='open' ? F(_livePrices[t.sym]) : '—'}</td>
       <td>${t.exitPrice ? F(t.exitPrice) : '—'}</td>
       <td class="jnl-pnl ${pnlCls}">${pnl}</td>
       <td class="jnl-pnl ${pnlCls}">${roe}</td>
       <td><span class="jnl-badge ${t.status}">${t.status}</span></td>
+      <td>${actions}<button class="abtn" style="font-size:10px;padding:3px 8px;color:var(--red)" onclick="deleteTrade(${t.id})">🗑</button></td>
     </tr>`;
   }).join('');
 }
@@ -2752,13 +1853,13 @@ function renderJournal() {
 function exportJournalCSV() {
   const all = loadJournal();
   if (!all.length) { alert('No trades to export.'); return; }
-  const headers = ['#','Date','Symbol','Direction','Grade','TF','Entry','SL','TP1','TP2','TP3','Contracts','MaxRisk','4H Bias','1H Bias','ExitPrice','PnL','ROE%','Status','CloseReason'];
+  const headers = ['#','Date','Symbol','Direction','Mode','Grade','Entry','SL','TP1','TP2','TP3','Size','4H Bias','1H Bias','ExitPrice','PnL','ROE%','Status','CloseReason','Notes'];
   const rows = all.map((t, i) => [
     all.length - i, new Date(t.openedAt).toLocaleString('en-IN'), t.sym, t.direction,
-    t.setupGrade, t.setupTf, t.entry, t.sl, t.tp1, t.tp2, t.tp3, t.contracts,
-    t.maxRisk?.toFixed(2), t.bias4h, t.bias1h,
+    t.mode || '', t.setupGrade, t.entry, t.sl, t.tp1, t.tp2, t.tp3, t.contracts,
+    t.bias4h, t.bias1h,
     t.exitPrice || '', t.realizedPnl?.toFixed(4) || '', t.roePercent?.toFixed(2) || '',
-    t.status, t.closeReason || '',
+    t.status, t.closeReason || '', t.notes || '',
   ].map(v => `"${v ?? ''}"`).join(','));
   const csv = [headers.join(','), ...rows].join('\n');
   const a = document.createElement('a');
@@ -2768,25 +1869,11 @@ function exportJournalCSV() {
 }
 
 buildUI();
-restoreAutoSymUI();
 loadTgSettingsUI();
 loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();
 loadReportSettingsUI();
-if (getReportSettings().on) scheduleAIReport();
-restoreOrderState();
-startOrderPolling();
-if (localStorage.getItem('delta_key')) {
-  pollOpenOrders();
-  setTimeout(recoverSLOrders, 8000);
-}
-// Restore auto mode if it was running before page reload
-if (localStorage.getItem('auto_mode') === 'on' && localStorage.getItem('delta_key')) {
-  _autoMode = true;
-  updateAutoUI();
-  scheduleNextScan();
-  logAuto('Auto mode restored after reload', 'ok');
-}
+if (getReportSettings().on) scheduleAlgoReport();
 </script>
 </body>
 </html>
