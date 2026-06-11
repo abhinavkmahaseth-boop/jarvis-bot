@@ -1,0 +1,25 @@
+name: JARVIS Scheduled Report
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+    - cron: '30 7 * * *'
+    - cron: '30 12 * * *'
+    - cron: '30 16 * * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run JARVIS Algo Report
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          REPORT_MODE: swing
+          REPORT_SYMS: BTCUSD,SOLUSD,ETHUSD
+        run: node .github/scripts/report.js
