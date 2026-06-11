@@ -230,6 +230,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 /* ── Auto mode ───────────────────────────────────────────────────── */
 .auto-badge{display:none;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.1em;background:rgba(0,229,168,.1);border:1px solid rgba(0,229,168,.35);color:var(--green);padding:3px 9px;border-radius:10px}
 .auto-badge.on{display:inline-flex}
+.mode-pill{display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2px;gap:2px}
+.mode-pill button{font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:16px;border:none;cursor:pointer;background:transparent;color:var(--text3);transition:all .2s}
+.mode-pill button.active{background:var(--purple);color:#fff}
+.mode-pill button.active.scalp{background:linear-gradient(135deg,#7c3aed,#2563eb)}
 .auto-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:ablink 1.4s infinite}
 @keyframes ablink{0%,100%{opacity:1}50%{opacity:.25}}
 .auto-log{max-height:180px;overflow-y:auto;background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:.55rem .7rem;font-family:monospace;font-size:10px;margin-top:.4rem}
@@ -377,6 +381,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <span class="auto-badge" id="auto-mode-badge"><span class="auto-dot"></span>AUTO</span>
       </div>
       <div class="page-hd-actions">
+        <div class="mode-pill" id="mode-pill-dash">
+          <button id="mode-swing-dash" class="active" onclick="toggleMode('swing')">Swing 4H</button>
+          <button id="mode-scalp-dash" class="scalp" onclick="toggleMode('scalp')">⚡ Scalp 1H</button>
+        </div>
         <button class="btn btn-algo" onclick="analyseAll('algo')">⚡ Analyse All</button>
         <button class="btn btn-ai" id="btn-all-ai" onclick="analyseAll('ai')">🤖 AI All</button>
       </div>
@@ -431,6 +439,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
     <div class="page-hd">
       <span class="page-hd-title">Analysis</span>
       <div class="page-hd-actions">
+        <div class="mode-pill" id="mode-pill-analysis">
+          <button id="mode-swing-analysis" class="active" onclick="toggleMode('swing')">Swing 4H</button>
+          <button id="mode-scalp-analysis" class="scalp" onclick="toggleMode('scalp')">⚡ Scalp 1H</button>
+        </div>
         <button class="btn btn-algo" onclick="analyseAll('algo')">⚡ Analyse All</button>
         <button class="btn btn-ai" onclick="analyseAll('ai')">🤖 AI All</button>
       </div>
@@ -737,6 +749,27 @@ STEP 12 — POSITION MGT: TP1 30-40%→SL to BE | TP2 30%→trail to TP1 | TP3 3
 STEP 13 — INVALIDATION→NO TRADE: bias unclear | no fresh FVG in P/D | mitigated | no displacement | R:R<1:2
 OUTPUT: KEY LEVELS table + SETUPS only (no FVG tables). Exact prices.`;
 
+const SMC_SCALP_PROMPT = `SMC SCALP ENGINE v1.0
+You are a professional intraday SMC scalper. You receive three timeframes: 1H (trend/bias), 15M (structure + FVG), 5M (entry trigger). Qualify or reject every setup. Output exact prices only. Never approximate. When uncertain: NO TRADE.
+RULES: FVGs only. No OBs, no indicators. 1H bias overrides all. Map both sides (grade counter-bias C, never trade). Liquidity sweep = grading factor (A vs B), not mandatory. If SL >0.5% from entry: REJECT.
+PRIORITY: 1H Bias → 15M Structure → 15M Liquidity → 15M FVG → Premium/Discount → 5M Displacement → 5M Entry → R:R
+STEP 1 — 1H BIAS: BULLISH(HH+HL on 1H, above 1H EQ, bullish displacement) | BEARISH(LH+LL on 1H, below 1H EQ, bearish displacement) | NEUTRAL→NO TRADE. Note session: London/NY preferred. Asian session = NO TRADE unless structure is crystal clear.
+STEP 2 — 15M STRUCTURE: Identify 15M HH/HL/LH/LL. Mark last CHoCH level — this is the hard invalidation line.
+STEP 3 — 15M LIQUIDITY: BSL(equal highs, 15M swing highs) | SSL(equal lows, 15M swing lows). Note if swept within last 5 candles.
+STEP 4 — 15M FVGs ONLY: Bullish: C1.high<C3.low | Bearish: C1.low>C3.high. High|Low|CE=(H+L)/2. Only from displacement moves, not consolidation.
+STEP 5 — STATUS: Fresh(untouched) | Tapped(price entered, CE held) | Mitigated(price closed through — exclude) | Inverted(polarity flip — note only)
+STEP 6 — PREMIUM/DISCOUNT: EQ=(last 15M swing H + last 15M swing L)/2. Bearish→bearish FVGs above EQ only. Bullish→bullish FVGs below EQ only. Mid-range FVGs = NO TRADE.
+STEP 7 — 5M DISPLACEMENT: IMPULSIVE(large body, closes at high/low) | CORRECTIVE(small body, long wicks = reject). 5M body must be >avg of prev 3 candles.
+STEP 8 — GRADE: A(1H bias + 15M liquidity swept + fresh 15M FVG in P/D + strong 5M displacement) | B(1H bias + fresh 15M FVG, missing sweep OR weak displacement) | C(counter-bias — never trade)
+STEP 9 — ENTRY(all 5 required): 1.15M FVG tap 2.5M rejection candle at FVG 3.5M displacement away from FVG 4.5M CHoCH or BOS 5.R:R≥1:2
+STEP 10 — SL: Beyond far edge of 15M FVG + 0.1% buffer. Hard rule: if SL >0.5% from entry → REJECT entire setup.
+STEP 11 — TARGETS: TP1=nearest 15M opposing liquidity (exact price) | TP2=next unmitigated 15M FVG opposite side | TP3=1H liquidity pool or 1H EQ. R:R for each.
+STEP 12 — POSITION MGT: TP1 40%→SL to BE immediately | TP2 40%→trail SL to TP1 | TP3 20% ride with 5M trailing LH/HL. If price stalls >3 candles inside FVG without 5M CHoCH: EXIT FULL.
+STEP 13 — INVALIDATION→NO TRADE: 1H bias unclear | no fresh 15M FVG in P/D | FVG mitigated | no 5M displacement | SL>0.5% | R:R<1:2 | Asian session chop | major news in next 30M
+OUTPUT: KEY LEVELS table (exact prices) + ACTIVE SETUPS only. No FVG dump tables. Flag session (London/NY/Asian).`;
+
+let _mode = localStorage.getItem('analysis_mode') || 'swing';
+
 // ── Build UI ─────────────────────────────────────────────────────────────────
 function buildUI() {
   const grid  = document.getElementById('grid');
@@ -795,6 +828,7 @@ function buildUI() {
   const nc = localStorage.getItem('n_candles'); if (nc) document.getElementById('n-candles').value = nc;
   const lb = localStorage.getItem('swing_lb');  if (lb) document.getElementById('swing-lb').value  = lb;
 
+  toggleMode(_mode); // restore saved mode
   startWS();
   nav(location.hash.slice(1) || 'dashboard');
   initCharts();
@@ -1077,6 +1111,121 @@ function buildSetups(fvgs, b4h, cp, liq, pv4h) {
   return setups.slice(0, 3);
 }
 
+// ── Scalp algo functions ──────────────────────────────────────────────────────
+function calcSLScalp(fvg) {
+  const buf = Math.abs(fvg.gH - fvg.gL) * 0.15;
+  return fvg.type === 'bull' ? fvg.gL - buf : fvg.gH + buf;
+}
+function calcTPsScalp(fvg, entry, sl, allFVGs, liq) {
+  const lng = fvg.type === 'bull';
+  const risk = Math.abs(entry - sl);
+  const rr = dist => dist / risk;
+  let tp1 = lng ? liq.nearBSL : liq.nearSSL;
+  if (!tp1 || (lng && tp1 <= entry) || (!lng && tp1 >= entry))
+    tp1 = lng ? entry + 2*(entry-sl) : entry - 2*(sl-entry);
+  const opp = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED' && (lng ? f.ce > tp1 : f.ce < tp1))
+    .sort((a,b) => lng ? a.ce - b.ce : b.ce - a.ce);
+  let tp2 = opp[0]?.ce || (lng ? entry + 3*(entry-sl) : entry - 3*(sl-entry));
+  let tp3 = lng ? (liq.majBSL > tp2 ? liq.majBSL : entry + 4*(entry-sl))
+                : (liq.majSSL < tp2 ? liq.majSSL : entry - 4*(sl-entry));
+  return [
+    {p:tp1, rr:rr(Math.abs(tp1-entry)), lbl:'nearest 15M liquidity'},
+    {p:tp2, rr:rr(Math.abs(tp2-entry)), lbl:'next 15M FVG opposite'},
+    {p:tp3, rr:rr(Math.abs(tp3-entry)), lbl:'1H liquidity pool'},
+  ];
+}
+function buildSetupsScalp(fvgs, b1h, cp, liq) {
+  if (b1h === 'NEUTRAL') return [];
+  const cands = fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED');
+  const setups = [];
+  for (const fvg of cands) {
+    const lng = fvg.type === 'bull';
+    if (lng  && (fvg.gH < cp * 0.99 || fvg.gL > cp * 1.003)) continue;
+    if (!lng && (fvg.gL > cp * 1.01 || fvg.gH < cp * 0.997)) continue;
+    const entry = fvg.ce, sl = calcSLScalp(fvg);
+    if (Math.abs(entry - sl) / entry > 0.005) continue; // hard 0.5% SL cap
+    const tps = calcTPsScalp(fvg, entry, sl, fvgs, liq);
+    if (tps[0].rr < 1.5) continue;
+    setups.push({fvg, entry, sl, tps, lng});
+  }
+  setups.sort((a,b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
+  return setups.slice(0, 3);
+}
+function renderAlgoScalp(sym, data) {
+  const {cp, b1h, b15m, b5m, eq1h, eq15m, eq5m, ch1h, ch15m, ch5m, liq, setups, ts} = data;
+  let confText = '', confCls = '';
+  if      (b1h==='BULLISH' && b15m==='BULLISH') { confText='Strong scalp long — 1H + 15M aligned. Wait for 5M demand entry.'; confCls='bull'; }
+  else if (b1h==='BEARISH' && b15m==='BEARISH') { confText='Strong scalp short — 1H + 15M aligned. Wait for 5M rejection entry.'; confCls='bear'; }
+  else if (b1h==='BEARISH' && b15m==='BULLISH') { confText='1H bearish, 15M retracing — scalp short at 15M premium zones only.'; confCls='bear'; }
+  else if (b1h==='BULLISH' && b15m==='BEARISH') { confText='1H bullish, 15M retracing — scalp long at 15M discount zones only.'; confCls='bull'; }
+  else if (b1h==='NEUTRAL') confText='1H bias unclear — no scalp trade.';
+  else confText='Mixed signals — wait for 1H clarity.';
+
+  let h = `
+  <div class="r-header">
+    <span class="r-sym">${sym}.P</span>
+    <span style="font-size:10px;background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(37,99,235,.25));color:#a78bfa;padding:2px 9px;border-radius:10px;margin-left:6px;border:1px solid rgba(124,58,237,.4)">⚡ SCALP</span>
+    <span class="r-price">${F(cp)} <span class="r-live"></span></span>
+    <span class="r-time">${ts}</span>
+  </div>
+  <div class="r-bias">
+    <div class="r-bias-cell"><div class="r-tf">1H</div><div class="r-bval ${BC(b1h)}">${b1h}</div><div class="r-binfo">${BS(b1h)}<br>EQ ${F(eq1h)}<br>CHoCH ${F(ch1h)}</div></div>
+    <div class="r-bias-cell"><div class="r-tf">15M</div><div class="r-bval ${BC(b15m)}">${b15m}</div><div class="r-binfo">${BS(b15m)}<br>EQ ${F(eq15m)}<br>CHoCH ${F(ch15m)}</div></div>
+    <div class="r-bias-cell"><div class="r-tf">5M</div><div class="r-bval ${BC(b5m)}">${b5m}</div><div class="r-binfo">${BS(b5m)}<br>EQ ${F(eq5m)}<br>CHoCH ${F(ch5m)}</div></div>
+  </div>
+  ${confText ? `<div class="r-conf ${confCls}">${confText}</div>` : ''}
+  <div class="r-sec">
+    <div class="r-sec-lbl">Key Levels</div>
+    <table class="r-table">
+      <tr><td>CHoCH Invalidation (1H)</td><td>${F(ch1h)}</td></tr>
+      <tr><td>Equilibrium (1H)</td><td>${F(eq1h)}</td></tr>
+      <tr><td>Nearest BSL (15M)</td><td>${F(liq.nearBSL)}</td></tr>
+      <tr><td>Nearest SSL (15M)</td><td>${F(liq.nearSSL)}</td></tr>
+      <tr><td>Psych Level</td><td>${F(liq.psych)}</td></tr>
+    </table>
+  </div>
+  <div class="r-sec"><div class="r-sec-lbl">Scalp Setups</div>`;
+
+  if (!setups.length) {
+    h += `<div class="no-trade">NO SCALP TRADE — No 15M FVG within 0.5% SL cap near current price</div>`;
+  } else {
+    setups.forEach((s, i) => {
+      const {fvg, entry, sl, tps, lng} = s;
+      const dir = lng ? 'LONG' : 'SHORT', dc = lng ? 'sdir-long' : 'sdir-short';
+      const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
+      h += `<div class="setup-card grade-${fvg.grade.toLowerCase()}">
+        <div class="sh">
+          <span style="font-size:10px;color:var(--text3)">SCALP ${i+1}</span>
+          <span class="${dc}">${dir}</span>
+          <span class="s-zone">${fvg.tf} FVG</span>
+          <span class="gbadge ${fvg.grade.toLowerCase()}">Grade ${fvg.grade}</span>
+          <span style="font-size:10px;color:var(--text3)">SL ${slPct}%</span>
+          ${fvg.swept ? '<span style="font-size:10px;color:#3a6a3a">✓ Swept</span>' : ''}
+        </div>
+        <div class="srow">Entry zone: <b>${F(fvg.gL)} – ${F(fvg.gH)}</b> &nbsp;·&nbsp; CE: <b>${F(entry)}</b></div>
+        <div class="srow sl">SL: <b>${F(sl)}</b> <span style="font-size:10px;opacity:.6">(${slPct}%)</span></div>
+        <div class="tp-row" style="color:var(--text2)">TP1 <b>${F(tps[0].p)}</b> &nbsp;${RR(tps[0].rr)}&nbsp; <span class="tp-lbl">${tps[0].lbl}</span></div>
+        <div class="tp-row" style="color:var(--accent)">TP2 <b>${F(tps[1].p)}</b> &nbsp;${RR(tps[1].rr)}&nbsp; <span class="tp-lbl">${tps[1].lbl}</span></div>
+        <div class="tp-row" style="color:var(--purple)">TP3 <b>${F(tps[2].p)}</b> &nbsp;${RR(tps[2].rr)}&nbsp; <span class="tp-lbl">${tps[2].lbl}</span></div>
+        <div class="s-conds">
+          <span class="cond">✓ 15M FVG tap ${F(fvg.gL)}–${F(fvg.gH)}</span>
+          <span class="cond">✓ 5M rejection candle</span>
+          <span class="cond">✓ 5M displacement</span>
+          <span class="cond">✓ 5M CHoCH/BOS</span>
+        </div>
+        <div class="s-mgmt">
+          40% at TP1 → SL to BE immediately &nbsp;·&nbsp; 40% at TP2 → trail to TP1 &nbsp;·&nbsp;
+          20% ride on 5M trailing ${lng ? 'HL' : 'LH'} &nbsp;·&nbsp;
+          Exit if price stalls >3 5M candles in FVG
+        </div>
+        <button class="abtn abtn-algo" style="margin-top:.65rem;width:100%;padding:9px 0;font-size:11px;letter-spacing:.06em"
+          onclick="openTradeModal('${sym}',${i})">⚡ Trade This Setup</button>
+      </div>`;
+    });
+  }
+  return h + '</div>';
+}
+
 // ── Render algo result ────────────────────────────────────────────────────────
 const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
 const RR = n => `1:${Number(n).toFixed(2)}`;
@@ -1159,7 +1308,32 @@ function renderAlgo(sym, data) {
 async function runAlgo(sym) {
   const cnt = parseInt(document.getElementById('n-candles').value) || 150;
   const lb  = parseInt(document.getElementById('swing-lb').value)  || 5;
-  const [d4h, d1h, d15m] = await Promise.all(TFS.map(tf => fetchOHLCV(sym, tf.res, cnt)));
+
+  if (_mode === 'scalp') {
+    const [d1h, d15m, d5m] = await Promise.all([
+      fetchOHLCV(sym, '1h',  cnt),
+      fetchOHLCV(sym, '15m', cnt),
+      fetchOHLCV(sym, '5m',  cnt),
+    ]);
+    const cp = d5m[d5m.length-1].close;
+    const el = document.getElementById(`cp-val-${sym}`); if (el) el.textContent = cp.toLocaleString('en-IN', {maximumFractionDigits:2});
+    const pv1h  = pivots(d1h,  lb), pv15m = pivots(d15m, Math.max(3, lb-2)), pv5m = pivots(d5m, 3);
+    const b1h   = bias(pv1h),  b15m  = bias(pv15m),  b5m  = bias(pv5m);
+    const eq1h  = eqLevel(pv1h), eq15m = eqLevel(pv15m), eq5m = eqLevel(pv5m);
+    const ch1h  = choch(pv1h,  b1h),  ch15m = choch(pv15m, b15m), ch5m = choch(pv5m, b5m);
+    const liq   = liqLevels(pv15m, cp);
+    const f15m  = detectFVGs(d15m, '15M', pv15m).slice(-6);
+    const f5m   = detectFVGs(d5m,  '5M',  pv5m).slice(-4);
+    const fvgs  = [...f15m, ...f5m];
+    fvgs.forEach(v => { v.grade = grade(v, b1h, eq1h); });
+    const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
+    outputs[sym].setups = setups;
+    outputs[sym].b4h = b1h; outputs[sym].b1h = b15m;
+    return renderAlgoScalp(sym, {cp, b1h, b15m, b5m, eq1h, eq15m, eq5m, ch1h, ch15m, ch5m, liq, setups, ts: new Date().toLocaleTimeString()});
+  }
+
+  // ── Swing mode ──
+  const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym, tf.res, cnt)));
   const cp = d1h[d1h.length-1].close;
   const el = document.getElementById(`cp-val-${sym}`); if (el) el.textContent = cp.toLocaleString('en-IN', {maximumFractionDigits:2});
   const pv4h = pivots(d4h, lb), pv1h = pivots(d1h, lb), pv15m = pivots(d15m, Math.max(3, lb-2));
@@ -1184,12 +1358,27 @@ async function runAI(sym) {
   if (!key) throw new Error('Add Gemini API key in Settings');
   const model = document.getElementById('ai-model').value || localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
   const cnt = parseInt(document.getElementById('n-candles').value) || 150;
-  const [d4h, d1h, d15m] = await Promise.all(TFS.map(tf => fetchOHLCV(sym, tf.res, cnt)));
-  const cp = d1h[d1h.length-1].close;
   const fmt = rows => { const ln = ['Date (UTC)|O|H|L|C|Vol','---|---|---|---|---|---']; rows.forEach(r => { const d=new Date(r.time*1000).toISOString().replace('T',' ').slice(0,16); ln.push(`${d}|${r.open}|${r.high}|${r.low}|${r.close}|${r.volume}`); }); return ln.join('\n'); };
-  const msg = `Analyse ${sym}.P\nPrice: ${cp}\n\n4H:\n${fmt(d4h)}\n\n1H:\n${fmt(d1h)}\n\n15M:\n${fmt(d15m)}`;
+
+  let msg, prompt;
+  if (_mode === 'scalp') {
+    const [d1h, d15m, d5m] = await Promise.all([
+      fetchOHLCV(sym, '1h', cnt),
+      fetchOHLCV(sym, '15m', cnt),
+      fetchOHLCV(sym, '5m', cnt),
+    ]);
+    const cp = d5m[d5m.length-1].close;
+    msg = `Scalp analyse ${sym}.P\nPrice: ${cp}\n\n1H (Trend/Bias):\n${fmt(d1h)}\n\n15M (Structure + FVG):\n${fmt(d15m)}\n\n5M (Entry):\n${fmt(d5m)}`;
+    prompt = SMC_SCALP_PROMPT;
+  } else {
+    const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym, tf.res, cnt)));
+    const cp = d1h[d1h.length-1].close;
+    msg = `Analyse ${sym}.P\nPrice: ${cp}\n\n4H:\n${fmt(d4h)}\n\n1H:\n${fmt(d1h)}\n\n15M:\n${fmt(d15m)}`;
+    prompt = SMC_PROMPT;
+  }
+
   const ep = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${key}&alt=sse`;
-  const res = await fetch(ep, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:SMC_PROMPT}]},contents:[{role:'user',parts:[{text:msg}]}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})});
+  const res = await fetch(ep, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:prompt}]},contents:[{role:'user',parts:[{text:msg}]}],generationConfig:{temperature:0.1,maxOutputTokens:8192}})});
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
   let out = ''; const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
   while (true) {
@@ -1212,6 +1401,20 @@ async function runAI(sym) {
   return out;
 }
 function copyOut(sym) { navigator.clipboard.writeText(outputs[sym]?.rawText || ''); }
+
+// ── Mode toggle ───────────────────────────────────────────────────────────────
+function toggleMode(m) {
+  _mode = m;
+  localStorage.setItem('analysis_mode', m);
+  const isScalp = m === 'scalp';
+  ['dash','analysis'].forEach(loc => {
+    const sw = document.getElementById(`mode-swing-${loc}`);
+    const sc = document.getElementById(`mode-scalp-${loc}`);
+    if (!sw || !sc) return;
+    sw.classList.toggle('active', !isScalp);
+    sc.classList.toggle('active', isScalp);
+  });
+}
 
 // ── Run card ──────────────────────────────────────────────────────────────────
 async function runCard(sym, mode) {
