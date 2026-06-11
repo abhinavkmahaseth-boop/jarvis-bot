@@ -1452,21 +1452,28 @@ async function fetchTgChatId() {
 async function sendTelegramAlert(text) {
   const token  = getTgToken();
   const chatId = getTgChatId();
-  if (!token || !chatId) return;
+  if (!token || !chatId) return false;
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
     });
-  } catch {}
+    const j = await r.json();
+    return j.ok === true;
+  } catch { return false; }
 }
 
 async function testTgAlert() {
-  const st = document.getElementById('tg-status');
-  if (st) st.textContent = '⏳ Sending…';
-  await sendTelegramAlert('🤖 <b>JARVIS</b> — Test alert! Telegram alerts are working correctly.');
-  if (st) { st.textContent = '✓ Test sent — check your Telegram'; st.style.color = 'var(--green)'; }
+  const st  = document.getElementById('tg-status');
+  const tok = getTgToken();
+  const cid = getTgChatId();
+  if (!tok) { if (st) { st.textContent = '⚠ Enter Bot Token first'; st.style.color = '#f5b800'; } return; }
+  if (!cid) { if (st) { st.textContent = '⚠ Chat ID missing — send a message to your bot then click Auto-fetch'; st.style.color = '#f5b800'; } return; }
+  if (st) { st.textContent = '⏳ Sending…'; st.style.color = 'var(--text2)'; }
+  const ok = await sendTelegramAlert('🤖 <b>JARVIS</b> — Test alert! Telegram alerts are working correctly.');
+  if (ok) { if (st) { st.textContent = '✓ Message sent — check your Telegram'; st.style.color = 'var(--green)'; } }
+  else    { if (st) { st.textContent = '✗ Failed — check token is correct and bot is not blocked'; st.style.color = 'var(--red)'; } }
 }
 
 function tgAlert(type, d = {}) {
