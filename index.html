@@ -450,7 +450,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
             <th id="dth-BTCUSD">BTC</th>
             <th id="dth-SOLUSD">SOL</th>
             <th id="dth-ETHUSD">ETH</th>
-            <th id="dth-PAXGUSD">PAXG</th>
           </tr>
         </thead>
         <tbody id="dl-tbody"></tbody>
@@ -511,8 +510,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
               <option value="BTCUSD">BTC</option>
               <option value="SOLUSD">SOL</option>
               <option value="ETHUSD">ETH</option>
-              <option value="PAXGUSD">PAXG</option>
-            </select>
+                          </select>
           </div>
           <div class="sc-field">
             <label class="sc-label">Every (hours)</label>
@@ -594,8 +592,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <label class="sc-label">Symbol</label>
         <select id="lm-sym" class="sc-input">
           <option value="BTCUSD">BTC</option><option value="SOLUSD">SOL</option>
-          <option value="ETHUSD">ETH</option><option value="PAXGUSD">PAXG</option>
-        </select>
+          <option value="ETHUSD">ETH</option>        </select>
       </div>
       <div class="sc-field">
         <label class="sc-label">Direction</label>
@@ -661,7 +658,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────────
-const SYMS = ['BTCUSD','SOLUSD','ETHUSD','PAXGUSD'];
+const SYMS = ['BTCUSD','SOLUSD','ETHUSD'];
 const TFS  = [
   {label:'4H', res:'4h',  sec:14400},
   {label:'1H', res:'1h',  sec:3600},
@@ -671,7 +668,7 @@ const TFS  = [
 let outputs = {}, activeTab = SYMS[0];
 
 function isMarketOpen(sym) {
-  if (sym !== 'PAXGUSD') return true;
+  if (['BTCUSD','SOLUSD','ETHUSD'].includes(sym)) return true;
   const d = new Date().getUTCDay();
   return d !== 0 && d !== 6;
 }
