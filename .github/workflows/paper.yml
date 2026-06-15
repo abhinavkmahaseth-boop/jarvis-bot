@@ -1,0 +1,77 @@
+name: Paper trading (BTC)
+
+# Monitors BTC every ~5 min: scans the shared engine, Claude-verifies new setups,
+# pings Telegram, fills paper trades on the entry tap, manages them (TP1-then-trail)
+# and posts a weekly review. State lives on the isolated `paper-data` branch so it
+# survives between runs without touching main / Pages.
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # monitor
+    - cron: '0 12 * * 0'    # weekly review — Sunday 12:00 UTC (5:30 PM IST)
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'monitor or review'
+        default: 'monitor'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-trade
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Load state from paper-data branch
+        run: |
+          if git clone --depth 1 --branch paper-data --single-branch \
+               "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd 2>/dev/null \
+             && [ -f /tmp/pd/state.json ]; then
+            cp /tmp/pd/state.json ./state.json
+            echo "loaded existing state"
+          else
+            echo '{"pending":[],"open":[],"closed":[],"startEquity":1000}' > ./state.json
+            echo "initialised empty state"
+          fi
+
+      - name: Run paper-trader
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          STATE_FILE: ${{ github.workspace }}/state.json
+        run: |
+          TASK="${{ github.event.inputs.task }}"
+          if [ -z "$TASK" ]; then
+            [ "${{ github.event.schedule }}" = "0 12 * * 0" ] && TASK="review" || TASK="monitor"
+          fi
+          echo "task=$TASK"
+          node .github/scripts/paper-trade.js "$TASK"
+
+      - name: Persist state to paper-data branch
+        run: |
+          rm -rf /tmp/pd
+          if ! git clone --depth 1 --branch paper-data --single-branch \
+                 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd 2>/dev/null; then
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd
+            cd /tmp/pd && git checkout --orphan paper-data && git rm -rf . >/dev/null 2>&1 || true
+            cd "$GITHUB_WORKSPACE"
+          fi
+          cp ./state.json /tmp/pd/state.json
+          cd /tmp/pd
+          git config user.name "jarvis-bot"
+          git config user.email "jarvis-bot@users.noreply.github.com"
+          git add state.json
+          git commit -m "paper state $(date -u +%FT%TZ) [skip ci]" || { echo "no change"; exit 0; }
+          git push origin paper-data

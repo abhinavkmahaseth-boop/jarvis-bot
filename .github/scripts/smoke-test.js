@@ -4,7 +4,9 @@
 // Hits the live Delta read-only API. No Telegram, no Claude calls.
 const path = require('path');
 const engine = require(path.join(__dirname, '..', '..', 'engine.js'));
-const report = require(path.join(__dirname, 'report.js')); // require.main guard → main() does NOT run
+const claude = require(path.join(__dirname, '..', '..', 'claude.js'));
+const report = require(path.join(__dirname, 'report.js'));   // require.main guard → main() does NOT run
+const paper  = require(path.join(__dirname, 'paper-trade.js')); // require.main guard → does NOT run
 
 const SYMS = ['BTCUSD', 'SOLUSD', 'ETHUSD'];
 let failures = 0;
@@ -14,9 +16,12 @@ const check = (ok, label, extra = '') => {
 };
 
 (async () => {
-  // report.js requiring engine.js cleanly + exporting its functions proves it loaded.
+  // Every module loads cleanly + exports what the others rely on.
   check(typeof report.computeAlgo === 'function' && typeof report.formatTelegram === 'function',
         'report.js loads + requires engine.js');
+  check(typeof claude.verifyTrade === 'function', 'claude.js loads + exports verifyTrade');
+  check(typeof paper.monitor === 'function' && typeof paper.manageTrade === 'function',
+        'paper-trade.js loads + requires engine.js & claude.js');
 
   for (const mode of ['swing', 'scalp']) {
     for (const sym of SYMS) {
