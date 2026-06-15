@@ -5,9 +5,14 @@ name: Paper trading (BTC)
 # and posts a weekly review. State lives on the isolated `paper-data` branch so it
 # survives between runs without touching main / Pages.
 on:
+  # Reliable trigger: an external cron (cron-job.org) POSTs repository_dispatch
+  # every ~5 min — GitHub's own `schedule` is throttled and unreliable, so it's
+  # kept only as a backup. event_type = monitor | review.
+  repository_dispatch:
+    types: [monitor, review]
   schedule:
-    - cron: '*/5 * * * *'   # monitor
-    - cron: '0 12 * * 0'    # weekly review — Sunday 12:00 UTC (5:30 PM IST)
+    - cron: '*/5 * * * *'   # backup monitor (GitHub may skip these)
+    - cron: '0 12 * * 0'    # backup weekly review — Sunday 12:00 UTC (5:30 PM IST)
   workflow_dispatch:
     inputs:
       task:
@@ -52,11 +57,17 @@ jobs:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           STATE_FILE: ${{ github.workspace }}/state.json
         run: |
-          TASK="${{ github.event.inputs.task }}"
-          if [ -z "$TASK" ]; then
-            [ "${{ github.event.schedule }}" = "0 12 * * 0" ] && TASK="review" || TASK="monitor"
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            TASK="${{ github.event.action }}"                # monitor | review
+          elif [ -n "${{ github.event.inputs.task }}" ]; then
+            TASK="${{ github.event.inputs.task }}"
+          elif [ "${{ github.event.schedule }}" = "0 12 * * 0" ]; then
+            TASK="review"
+          else
+            TASK="monitor"
           fi
-          echo "task=$TASK"
+          [ -z "$TASK" ] && TASK="monitor"
+          echo "task=$TASK (event=${{ github.event_name }})"
           node .github/scripts/paper-trade.js "$TASK"
 
       - name: Persist state to paper-data branch
