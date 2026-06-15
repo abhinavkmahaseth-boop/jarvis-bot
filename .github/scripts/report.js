@@ -60,9 +60,12 @@ function bias(pv) {
 }
 
 function eqLevel(pv) {
+  // Equilibrium of the current dealing range (most recent swing high/low, last 2 each).
   const { h, l } = pv;
   if (!h.length || !l.length) return null;
-  return (Math.max(...h.slice(-3).map(x => x.p)) + Math.min(...l.slice(-3).map(x => x.p))) / 2;
+  const hi = Math.max(...h.slice(-2).map(x => x.p));
+  const lo = Math.min(...l.slice(-2).map(x => x.p));
+  return (hi + lo) / 2;
 }
 
 function choch(pv, b) {
@@ -78,27 +81,44 @@ function avgBody(c, idx, lb = 5) {
 }
 
 function fvgStat(c, fi, type, gH, gL, ce) {
-  // Classify by deepest penetration across ALL later candles (not just the first
-  // touch), so a gap tapped then fully mitigated later reads as MITIGATED.
+  // Scan ALL later candles by deepest penetration. MITIGATED only on a full fill
+  // through the far edge (gL bull / gH bear); a tap to CE (the entry) stays TAPPED.
   let touched = false;
   for (let i = fi + 1; i < c.length; i++) {
     if (type === 'bull') {
-      if (c[i].low  <= gH) { touched = true; if (c[i].low  <= ce) return 'MITIGATED'; }
+      if (c[i].low  <= gH) { touched = true; if (c[i].low  <= gL) return 'MITIGATED'; }
     } else {
-      if (c[i].high >= gL) { touched = true; if (c[i].high >= ce) return 'MITIGATED'; }
+      if (c[i].high >= gL) { touched = true; if (c[i].high >= gH) return 'MITIGATED'; }
     }
   }
   return touched ? 'TAPPED' : 'FRESH';
 }
 
 function hasSweep(c, fi, type, pv) {
-  const s = Math.max(0, fi - 6);
+  // Real sweep: in the candles forming/preceding the gap, price wicks BEYOND a prior
+  // swing level then CLOSES back through it (grab + reclaim). Checks bars after the
+  // level and confirms the reclaim. Keep IN SYNC with index.html.
+  const w0 = Math.max(0, fi - 4), w1 = Math.min(c.length - 1, fi);
   if (type === 'bull') {
-    const nl = pv.l.filter(x => x.i < fi - 2 && x.i >= s - 5);
-    return nl.length && c.slice(s, fi - 2).some(x => x.low < nl[nl.length-1].p);
+    const lows = pv.l.filter(x => x.i < w0);
+    if (!lows.length) return false;
+    const lvl = lows[lows.length - 1].p;
+    let swept = false;
+    for (let i = w0; i <= w1; i++) {
+      if (c[i].low < lvl) swept = true;
+      if (swept && c[i].close > lvl) return true;
+    }
+    return false;
   } else {
-    const nh = pv.h.filter(x => x.i < fi - 2 && x.i >= s - 5);
-    return nh.length && c.slice(s, fi - 2).some(x => x.high > nh[nh.length-1].p);
+    const highs = pv.h.filter(x => x.i < w0);
+    if (!highs.length) return false;
+    const lvl = highs[highs.length - 1].p;
+    let swept = false;
+    for (let i = w0; i <= w1; i++) {
+      if (c[i].high > lvl) swept = true;
+      if (swept && c[i].close < lvl) return true;
+    }
+    return false;
   }
 }
 
@@ -107,19 +127,20 @@ function detectFVGs(c, tfLbl, pv) {
   for (let i = 2; i < c.length; i++) {
     const [c1, c2, c3] = [c[i-2], c[i-1], c[i]];
     const b2 = Math.abs(c2.close - c2.open), ab = avgBody(c, i-1, 5);
-    if (!(ab > 0 && b2 >= ab)) continue;
+    // Require genuine displacement: gap-forming body ≥1.3× the recent average.
+    if (!(ab > 0 && b2 >= ab * 1.3)) continue;
     if (c1.high < c3.low) {
       const [gH, gL] = [c3.low, c1.high], ce = (gH + gL) / 2;
       if ((gH - gL) / ref >= MIN) {
         const st = fvgStat(c, i, 'bull', gH, gL, ce);
-        if (st !== 'MITIGATED') out.push({ type:'bull', tf:tfLbl, gH, gL, ce, status:st, swept:hasSweep(c,i,'bull',pv), dr:b2/(ab||1), fi:i });
+        if (st !== 'MITIGATED') out.push({ type:'bull', tf:tfLbl, gH, gL, ce, status:st, swept:hasSweep(c,i,'bull',pv), dr:b2/ab, fi:i });
       }
     }
     if (c1.low > c3.high) {
       const [gH, gL] = [c1.low, c3.high], ce = (gH + gL) / 2;
       if ((gH - gL) / ref >= MIN) {
         const st = fvgStat(c, i, 'bear', gH, gL, ce);
-        if (st !== 'MITIGATED') out.push({ type:'bear', tf:tfLbl, gH, gL, ce, status:st, swept:hasSweep(c,i,'bear',pv), dr:b2/(ab||1), fi:i });
+        if (st !== 'MITIGATED') out.push({ type:'bear', tf:tfLbl, gH, gL, ce, status:st, swept:hasSweep(c,i,'bear',pv), dr:b2/ab, fi:i });
       }
     }
   }
@@ -141,15 +162,35 @@ function grade(fvg, b, eqv) {
   return sc >= 3 ? 'A' : 'B';
 }
 
+// Equal-high/low liquidity pools + scaled psych level. Keep IN SYNC with index.html.
+function equalLevels(arr, tol) {
+  const used = new Array(arr.length).fill(false), out = [];
+  for (let i = 0; i < arr.length; i++) {
+    if (used[i]) continue;
+    const cluster = [arr[i].p];
+    for (let j = i + 1; j < arr.length; j++) {
+      if (!used[j] && Math.abs(arr[j].p - arr[i].p) / arr[i].p <= tol) { cluster.push(arr[j].p); used[j] = true; }
+    }
+    if (cluster.length >= 2) out.push(cluster.reduce((a, b) => a + b, 0) / cluster.length);
+  }
+  return out;
+}
+function psychLevel(cp) {
+  const target = cp / 15;
+  const mag = Math.pow(10, Math.floor(Math.log10(target)));
+  const cand = [1, 2, 2.5, 5, 10].map(m => m * mag);
+  const step = cand.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a);
+  return Math.round(cp / step) * step;
+}
 function liqLevels(pv, cp) {
   const { h, l } = pv;
   const majBSL  = h.length ? Math.max(...h.map(x => x.p)) : null;
   const majSSL  = l.length ? Math.min(...l.map(x => x.p)) : null;
   const nearBSL = h.filter(x => x.p > cp).sort((a, b) => a.p - b.p)[0]?.p || majBSL;
   const nearSSL = l.filter(x => x.p < cp).sort((a, b) => b.p - a.p)[0]?.p || majSSL;
-  const mag  = Math.pow(10, Math.floor(Math.log10(cp)));
-  const step = cp > 10000 ? mag : mag / 2;
-  return { majBSL, majSSL, nearBSL, nearSSL, psych: Math.round(cp / step) * step };
+  const eqh = equalLevels(h, 0.0015);
+  const eql = equalLevels(l, 0.0015);
+  return { majBSL, majSSL, nearBSL, nearSSL, eqh, eql, psych: psychLevel(cp) };
 }
 
 function calcSL(fvg, pv, cp) {
@@ -194,7 +235,7 @@ function calcTPs(fvg, entry, sl, allFVGs, liq, pv4h) {
   const lng = fvg.type === 'bull';
   const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
   const htf = (lng ? pv4h.h : pv4h.l).map(x => x.p);
-  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs, ...htf];
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...(lng ? liq.eqh : liq.eql), ...oppFVGs, ...htf];
   return orderTPs(entry, sl, lng, candidates);
 }
 
@@ -203,8 +244,9 @@ function buildSetups(fvgs, b4h, cp, liq, pvByTf) {
   const setups = [];
   for (const fvg of fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED')) {
     const lng = fvg.type === 'bull';
-    if (lng  && (fvg.gH < cp * 0.82 || fvg.gL > cp)) continue;
-    if (!lng && (fvg.gL > cp * 1.18 || fvg.gH < cp)) continue;
+    // Proximity: entry zone within ~12% of price (was 18% — too far to be actionable).
+    if (lng  && (fvg.gH < cp * 0.88 || fvg.gL > cp)) continue;
+    if (!lng && (fvg.gL > cp * 1.12 || fvg.gH < cp)) continue;
     const entry = fvg.ce;
     // Entry must be on the correct side of price: longs at/below (discount), shorts at/above (premium).
     if (lng  && entry > cp * 1.001) continue;
@@ -218,19 +260,29 @@ function buildSetups(fvgs, b4h, cp, liq, pvByTf) {
     setups.push({ fvg, entry, sl, tps, lng });
   }
   setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
-  return setups.slice(0, 3);
+  return dedupeSetups(setups).slice(0, 3);
 }
 
-function calcSLScalp(fvg) {
-  const buf = Math.abs(fvg.gH - fvg.gL) * 0.15;
+function calcSLScalp(fvg, cp) {
+  // Buffer ≥0.1% of price (or 25% of gap) so the stop isn't microscopic.
+  const buf = Math.max(Math.abs(fvg.gH - fvg.gL) * 0.25, cp * 0.001);
   return fvg.type === 'bull' ? fvg.gL - buf : fvg.gH + buf;
 }
 
 function calcTPsScalp(fvg, entry, sl, allFVGs, liq) {
   const lng = fvg.type === 'bull';
   const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
-  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs];
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...(lng ? liq.eqh : liq.eql), ...oppFVGs];
   return orderTPs(entry, sl, lng, candidates);
+}
+
+// Drop near-identical setups (same direction, entries within ~0.3%). Keep IN SYNC.
+function dedupeSetups(setups) {
+  const out = [];
+  for (const s of setups) {
+    if (!out.some(d => d.lng === s.lng && Math.abs(d.entry - s.entry) / s.entry < 0.003)) out.push(s);
+  }
+  return out;
 }
 
 function buildSetupsScalp(fvgs, b1h, cp, liq) {
@@ -240,7 +292,7 @@ function buildSetupsScalp(fvgs, b1h, cp, liq) {
     const lng = fvg.type === 'bull';
     if (lng  && (fvg.gH < cp * 0.99 || fvg.gL > cp * 1.003)) continue;
     if (!lng && (fvg.gL > cp * 1.01 || fvg.gH < cp * 0.997)) continue;
-    const entry = fvg.ce, sl = calcSLScalp(fvg);
+    const entry = fvg.ce, sl = calcSLScalp(fvg, cp);
     // Entry must be on the correct side of price: longs at/below, shorts at/above.
     if (lng  && entry > cp * 1.001) continue;
     if (!lng && entry < cp * 0.999) continue;
@@ -250,7 +302,7 @@ function buildSetupsScalp(fvgs, b1h, cp, liq) {
     setups.push({ fvg, entry, sl, tps, lng });
   }
   setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
-  return setups.slice(0, 3);
+  return dedupeSetups(setups).slice(0, 3);
 }
 
 // ── Compute ───────────────────────────────────────────────────────────────────
@@ -264,11 +316,12 @@ async function computeAlgo(sym) {
     const cp = d5m[d5m.length-1].close;
     const pv1h = pivots(d1h, LB), pv15m = pivots(d15m, Math.max(3, LB-2)), pv5m = pivots(d5m, 3);
     const b1h = bias(pv1h), b15m = bias(pv15m), b5m = bias(pv5m);
-    const eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m);
+    const eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m), eq5m = eqLevel(pv5m);
     const ch1h = choch(pv1h, b1h), ch15m = choch(pv15m, b15m);
     const liq = liqLevels(pv15m, cp);
     const fvgs = [...detectFVGs(d15m,'15M',pv15m).slice(-6), ...detectFVGs(d5m,'5M',pv5m).slice(-4)];
-    fvgs.forEach(v => { v.grade = grade(v, b1h, eq1h); });
+    const eqByTfS = {'15M':eq15m, '5M':eq5m};
+    fvgs.forEach(v => { v.grade = grade(v, b1h, eqByTfS[v.tf] ?? eq1h); });
     const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
     return { mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, ch4h:ch1h, ch1h:ch15m, liq, setups, ts };
   }
@@ -283,7 +336,8 @@ async function computeAlgo(sym) {
   const ch4h = choch(pv4h, b4h), ch1h = choch(pv1h, b1h);
   const liq = liqLevels(pv4h, cp);
   const fvgs = [...detectFVGs(d4h,'4H',pv4h).slice(-3), ...detectFVGs(d1h,'1H',pv1h).slice(-5), ...detectFVGs(d15m,'15M',pv15m).slice(-3)];
-  fvgs.forEach(v => { v.grade = grade(v, b4h, eq4h); });
+  const eqByTf = {'4H':eq4h, '1H':eq1h, '15M':eq15m};
+  fvgs.forEach(v => { v.grade = grade(v, b4h, eqByTf[v.tf] ?? eq4h); });
   const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m});
   return { mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, setups, ts };
 }
