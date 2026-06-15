@@ -353,6 +353,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
       Paper Trades
     </div>
+    <div class="nav-link" data-page="backtest" onclick="nav('backtest')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
+      Backtest
+    </div>
     <div class="nav-sep"></div>
     <div class="nav-link" data-page="data" onclick="nav('data')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -471,6 +476,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
       </div>
     </div>
     <div id="paper-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load paper trades…</div></div>
+  </div>
+
+  <!-- Backtest -->
+  <div class="page" id="page-backtest">
+    <div class="page-hd">
+      <span class="page-hd-title">Backtest <span style="font-size:11px;color:var(--text3);font-weight:400">· BTC scalp · Grade A · no Claude</span></span>
+      <div class="page-hd-actions">
+        <button class="btn btn-dl" onclick="renderBacktest()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="backtest-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load the backtest…</div></div>
   </div>
 
   <!-- Settings -->
@@ -720,6 +736,7 @@ function nav(page) {
   history.replaceState(null, '', `#${page}`);
   if (page === 'journal') renderJournal();
   if (page === 'paper') renderPaper();
+  if (page === 'backtest') renderBacktest();
 }
 
 // ── Paper Trades viewer (reads state.json from the paper-data branch) ──────────
@@ -809,6 +826,59 @@ async function renderPaper() {
   h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit','R','P&L','Closed']);
 
   h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · data may lag ~5 min (GitHub CDN)</div>`;
+  el.innerHTML = h;
+}
+
+// ── Backtest viewer (reads backtest.json from the paper-data branch) ──────────
+const BACKTEST_URL = 'https://raw.githubusercontent.com/abhinavkmahaseth-boop/jarvis-bot/paper-data/backtest.json';
+async function renderBacktest() {
+  const el = document.getElementById('backtest-body');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3)">Loading backtest…</div>';
+  let b;
+  try {
+    const r = await fetch(`${BACKTEST_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    b = await r.json();
+  } catch (e) {
+    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text3)">No backtest yet.<br><span style="font-size:11px">Run it: GitHub → Actions → “Backtest (BTC)” → Run workflow. Results appear here. (${e.message})</span></div>`;
+    return;
+  }
+  const m = b.meta || {}, st = b.stats || {};
+  const pos = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+  const exp = st.trades ? (st.totalR / st.trades) : 0;
+  const period = `${_pDate(new Date(m.periodStart).getTime())} → ${_pDate(new Date(m.periodEnd).getTime())}`;
+  let h = `<div style="font-size:11px;color:var(--text3);margin-bottom:.8rem">
+    ${m.days}d · ${m.sym} ${m.mode} · Grade ${m.grade} · ${m.claude ? 'Claude-gated' : 'algo-only'} · exit ${m.exit} · $${F(m.account)} @ ${m.riskPct}% (1R=$${F(m.rDollar)})<br>
+    ${period} · candles 1h ${m.candles?.['1h']} / 15m ${m.candles?.['15m']} / 5m ${m.candles?.['5m']}${m.stillOpen ? ` · ${m.stillOpen} still open at end` : ''}</div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem">
+    ${_card('Trades', String(st.trades))}
+    ${_card('Win rate', st.winRate + '%  (' + st.wins + 'W/' + st.losses + 'L)')}
+    ${_card('Net', (st.totalR >= 0 ? '+' : '') + st.totalR + 'R  ·  ' + (st.netPnl >= 0 ? '+' : '') + '$' + F(st.netPnl), pos(st.netPnl))}
+    ${_card('Profit factor', st.profitFactor == null ? '∞' : st.profitFactor)}
+    ${_card('Expectancy', (exp >= 0 ? '+' : '') + exp.toFixed(2) + 'R/trade', pos(exp))}
+    ${_card('Max drawdown', '$' + F(st.maxDrawdown), 'var(--red)')}
+  </div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
+    ${_card('Account', '$' + F(st.equity), pos(st.netPnl))}
+    ${_card('Avg win', '+' + st.avgWin + 'R', 'var(--green)')}
+    ${_card('Avg loss', '-' + st.avgLoss + 'R', 'var(--red)')}
+    ${_card('Best / Worst', '+' + st.best + 'R / ' + st.worst + 'R')}
+  </div>
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.6rem .9rem;margin-bottom:1.2rem">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem">Equity curve — $${F(m.account)} start</div>
+    ${_equitySvg(st.startEquity || 1000, b.closed || [])}
+  </div>`;
+  const td = (v, c) => `<td style="padding:.3rem .5rem;border-bottom:1px solid var(--border)${c ? ';color:' + c : ''}">${v}</td>`;
+  const dirBadge = d => `<b style="color:${d === 'LONG' ? 'var(--green)' : 'var(--red)'}">${d}</b>`;
+  const rows = [...(b.closed || [])].reverse().map(t => {
+    const c = pos(t.totalR);
+    return `<tr>${td(dirBadge(t.dir))}${td(t.tf)}${td(F(t.entry))}${td(t.exitReason)}${td((t.totalR >= 0 ? '+' : '') + t.totalR + 'R', c)}${td((t.pnl >= 0 ? '+' : '') + '$' + F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
+  });
+  h += `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">All ${b.closed?.length || 0} trades (newest first)</div>
+    <div style="max-height:420px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="color:var(--text3);text-align:left">${['Dir','TF','Entry','Exit','R','P&L','Closed'].map(x=>`<th style="padding:.35rem .5rem;font-weight:500;border-bottom:1px solid var(--border)">${x}</th>`).join('')}</tr></thead>
+    <tbody>${rows.join('')}</tbody></table></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:.6rem">Generated ${m.generatedAt ? _pDate(new Date(m.generatedAt).getTime()) : '—'} · walk-forward, no look-ahead · 5m-candle fills (very tight stops may read slightly optimistic)</div>`;
   el.innerHTML = h;
 }
 window.addEventListener('popstate', () => nav(location.hash.slice(1) || 'dashboard'));

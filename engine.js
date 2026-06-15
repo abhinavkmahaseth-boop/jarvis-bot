@@ -316,16 +316,18 @@
          : '—';
   }
 
-  // ── Orchestration ─────────────────────────────────────────────────────────────
-  // opts: { cnt=150, lb=5, mode='swing' }. Returns the full analysis object.
-  async function computeAlgo(sym, opts) {
-    const cnt = (opts && opts.cnt) || 150;
-    const lb  = (opts && opts.lb)  || 5;
+  // ── Pure analysis ─────────────────────────────────────────────────────────────
+  // Runs the full SMC pipeline on already-fetched candle sets. No network, no
+  // look-ahead beyond what's passed in — so the live path AND the backtester
+  // (which feeds sliced history) share one identical analysis.
+  // c = { d4h, d1h, d15m, d5m }; opts = { lb=5, mode='swing' }
+  function analyze(sym, c, opts) {
+    const lb = (opts && opts.lb) || 5;
     const mode = (opts && opts.mode) || 'swing';
     const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
 
     if (mode === 'scalp') {
-      const [d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
+      const { d1h, d15m, d5m } = c;
       const cp = d5m[d5m.length-1].close;
       const pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2)), pv5m = pivots(d5m,3);
       const b1h = bias(pv1h), b15m = bias(pv15m), b5m = bias(pv5m);
@@ -341,7 +343,7 @@
       return {mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, eq15m:eq5m, ch4h:ch1h, ch1h:ch15m, ch15m:ch5m, liq, setups, ts};
     }
 
-    const [d4h, d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'4h',cnt), fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
+    const { d4h, d1h, d15m, d5m } = c;
     const cp = d1h[d1h.length-1].close;
     const pv4h = pivots(d4h,lb), pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2));
     const b4h = bias(pv4h), b1h = bias(pv1h), b15m = bias(pv15m);
@@ -357,8 +359,21 @@
     return {mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, ch15m, liq, setups, ts};
   }
 
+  // ── Live orchestration: fetch latest candles → analyze ────────────────────────
+  async function computeAlgo(sym, opts) {
+    const cnt = (opts && opts.cnt) || 150;
+    const mode = (opts && opts.mode) || 'swing';
+    const lb = (opts && opts.lb) || 5;
+    if (mode === 'scalp') {
+      const [d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
+      return analyze(sym, { d1h, d15m, d5m }, { lb, mode });
+    }
+    const [d4h, d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'4h',cnt), fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
+    return analyze(sym, { d4h, d1h, d15m, d5m }, { lb, mode });
+  }
+
   return { TF_SEC, fetchOHLCV, pivots, bias, eqLevel, choch, avgBody, fvgStat, hasSweep,
            detectFVGs, grade, equalLevels, psychLevel, liqLevels, calcSL, orderTPs, calcTPs,
-           calcSLScalp, calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp,
+           calcSLScalp, calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp, analyze,
            entryTrigger, trigLabel, computeAlgo };
 });

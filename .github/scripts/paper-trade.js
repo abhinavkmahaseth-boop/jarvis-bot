@@ -60,28 +60,34 @@ function isKnown(state, dir, entry) {
   return state.closed.some(t => t.closedAt > cut && sameZone(t, dir, entry));
 }
 
-// ── Trade management: TP1-then-trail state machine over closed 5m candles ──────
-function manageTrade(t, candles) {
+// ── Trade management: TP1-then-trail state machine ────────────────────────────
+// applyBar processes ONE candle against an open trade (shared by the live monitor
+// and the backtester); returns the closed trade or null if still open.
+function applyBar(t, c) {
   const risk = Math.abs(t.entry - t.sl);
   const rAt = px => t.lng ? (px - t.entry) / risk : (t.entry - px) / risk;
-  const bars = candles.filter(c => c.time * 1000 >= t.enteredAt);
-  for (const c of bars) {
-    const hi = c.high, lo = c.low;
-    const hitStop = t.lng ? lo <= t.stop : hi >= t.stop;     // stop checked first (pessimistic)
-    if (hitStop) {
-      t.realizedR += t.remaining * rAt(t.stop);
-      t.remaining = 0;
-      return finishTrade(t, c, t.stage === 0 ? 'SL' : t.stage === 1 ? 'BE' : 'TP1-trail');
-    }
-    const hitTP1 = t.lng ? hi >= t.tp1 : lo <= t.tp1;
-    const hitTP2 = t.lng ? hi >= t.tp2 : lo <= t.tp2;
-    const hitTP3 = t.lng ? hi >= t.tp3 : lo <= t.tp3;
-    if (t.stage === 0 && hitTP1) { t.realizedR += 0.5 * t.rr1; t.remaining = 0.5; t.stop = t.entry; t.stage = 1; }
-    if (t.stage === 1 && hitTP2) { t.stop = t.tp1; t.stage = 2; }
-    if (t.stage >= 1 && hitTP3) {
-      t.realizedR += t.remaining * t.rr3; t.remaining = 0;
-      return finishTrade(t, c, 'TP3');
-    }
+  const hi = c.high, lo = c.low;
+  const hitStop = t.lng ? lo <= t.stop : hi >= t.stop;       // stop checked first (pessimistic)
+  if (hitStop) {
+    t.realizedR += t.remaining * rAt(t.stop);
+    t.remaining = 0;
+    return finishTrade(t, c, t.stage === 0 ? 'SL' : t.stage === 1 ? 'BE' : 'TP1-trail');
+  }
+  const hitTP1 = t.lng ? hi >= t.tp1 : lo <= t.tp1;
+  const hitTP2 = t.lng ? hi >= t.tp2 : lo <= t.tp2;
+  const hitTP3 = t.lng ? hi >= t.tp3 : lo <= t.tp3;
+  if (t.stage === 0 && hitTP1) { t.realizedR += 0.5 * t.rr1; t.remaining = 0.5; t.stop = t.entry; t.stage = 1; }
+  if (t.stage === 1 && hitTP2) { t.stop = t.tp1; t.stage = 2; }
+  if (t.stage >= 1 && hitTP3) {
+    t.realizedR += t.remaining * t.rr3; t.remaining = 0;
+    return finishTrade(t, c, 'TP3');
+  }
+  return null;
+}
+function manageTrade(t, candles) {
+  for (const c of candles.filter(c => c.time * 1000 >= t.enteredAt)) {
+    const done = applyBar(t, c);
+    if (done) return done;
   }
   return null; // still open
 }
@@ -208,5 +214,5 @@ if (require.main === module) {
     } catch (e) { console.error('paper-trade error:', e); process.exit(1); }
   })();
 } else {
-  module.exports = { manageTrade, monitor, review, R_DOLLAR };
+  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, R_DOLLAR };
 }

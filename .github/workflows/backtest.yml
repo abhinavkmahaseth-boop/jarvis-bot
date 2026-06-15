@@ -1,0 +1,55 @@
+name: Backtest (BTC)
+
+# On-demand algorithmic backtest (BTC scalp, Grade-A, no Claude). Writes
+# backtest.json to the paper-data branch so the dashboard's Backtest tab can read it,
+# and posts a summary to Telegram.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Days of history to backtest'
+        default: '60'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backtest
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run backtest
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          BT_DAYS: ${{ github.event.inputs.days }}
+          BT_OUT: ${{ github.workspace }}/backtest.json
+        run: node .github/scripts/backtest.js
+
+      - name: Publish backtest.json to paper-data branch
+        run: |
+          rm -rf /tmp/pd
+          if ! git clone --depth 1 --branch paper-data --single-branch \
+                 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd 2>/dev/null; then
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd
+            cd /tmp/pd && git checkout --orphan paper-data && git rm -rf . >/dev/null 2>&1 || true
+            cd "$GITHUB_WORKSPACE"
+          fi
+          cp ./backtest.json /tmp/pd/backtest.json
+          cd /tmp/pd
+          git config user.name "jarvis-bot"
+          git config user.email "jarvis-bot@users.noreply.github.com"
+          git add backtest.json
+          git commit -m "backtest $(date -u +%FT%TZ) [skip ci]" || { echo "no change"; exit 0; }
+          git push origin paper-data
