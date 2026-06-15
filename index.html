@@ -348,6 +348,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <line x1="9" y1="21" x2="9" y2="9"/></svg>
       Trade Log
     </div>
+    <div class="nav-link" data-page="paper" onclick="nav('paper')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      Paper Trades
+    </div>
     <div class="nav-sep"></div>
     <div class="nav-link" data-page="data" onclick="nav('data')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -455,6 +460,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <tbody id="dl-tbody"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Paper Trades -->
+  <div class="page" id="page-paper">
+    <div class="page-hd">
+      <span class="page-hd-title">Paper Trades — BTC <span style="font-size:11px;color:var(--text3);font-weight:400">· scalp · $1,000 · 2% risk</span></span>
+      <div class="page-hd-actions">
+        <button class="btn btn-dl" onclick="renderPaper()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="paper-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load paper trades…</div></div>
   </div>
 
   <!-- Settings -->
@@ -703,6 +719,97 @@ function nav(page) {
   document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === page));
   history.replaceState(null, '', `#${page}`);
   if (page === 'journal') renderJournal();
+  if (page === 'paper') renderPaper();
+}
+
+// ── Paper Trades viewer (reads state.json from the paper-data branch) ──────────
+const PAPER_STATE_URL = 'https://raw.githubusercontent.com/abhinavkmahaseth-boop/jarvis-bot/paper-data/state.json';
+function _pDate(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
+}
+function _equitySvg(start, closed) {
+  if (!closed.length) return '<div style="color:var(--text3);font-size:12px;padding:.5rem 0">Equity curve appears after the first trade closes.</div>';
+  const pts = [start]; let eq = start;
+  closed.forEach(t => { eq += (t.pnl || 0); pts.push(eq); });
+  const min = Math.min(...pts, start), max = Math.max(...pts, start), rng = (max - min) || 1;
+  const W = 620, H = 150, pad = 22;
+  const X = i => pad + (W - 2*pad) * (i / (pts.length - 1 || 1));
+  const Y = v => H - pad - (H - 2*pad) * ((v - min) / rng);
+  const poly = pts.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const up = pts[pts.length-1] >= start, col = up ? 'var(--green)' : 'var(--red)';
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <line x1="${pad}" y1="${Y(start).toFixed(1)}" x2="${W-pad}" y2="${Y(start).toFixed(1)}" stroke="var(--border)" stroke-dasharray="3 3"/>
+    <polyline points="${poly}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${X(pts.length-1).toFixed(1)}" cy="${Y(pts[pts.length-1]).toFixed(1)}" r="3" fill="${col}"/>
+  </svg>`;
+}
+function _card(label, value, color) {
+  return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem;min-width:110px;flex:1">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${label}</div>
+    <div style="font-size:17px;font-weight:700;margin-top:3px;color:${color || 'var(--text)'}">${value}</div></div>`;
+}
+async function renderPaper() {
+  const el = document.getElementById('paper-body');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3)">Loading paper trades…</div>';
+  let s;
+  try {
+    const r = await fetch(`${PAPER_STATE_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    s = await r.json();
+  } catch (e) {
+    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text3)">No paper-trade data yet.<br><span style="font-size:11px">The <b>paper-data</b> branch appears after the first run commits state. (${e.message})</span></div>`;
+    return;
+  }
+  const closed = s.closed || [], open = s.open || [], pending = s.pending || [];
+  const start = s.startEquity || 1000;
+  const net = closed.reduce((a, t) => a + (t.pnl || 0), 0);
+  const equity = start + net;
+  const wins = closed.filter(t => t.totalR > 0), losses = closed.filter(t => t.totalR < 0);
+  const winRate = closed.length ? Math.round(100 * wins.length / closed.length) : 0;
+  const totalR = closed.reduce((a, t) => a + (t.totalR || 0), 0);
+  const gW = wins.reduce((a, t) => a + t.totalR, 0), gL = Math.abs(losses.reduce((a, t) => a + t.totalR, 0));
+  const pf = gL ? (gW / gL) : (gW ? Infinity : 0);
+  const pos = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+
+  let h = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
+    ${_card('Account', '$' + F(equity), pos(net))}
+    ${_card('Net P&L', (net>=0?'+':'') + '$' + F(net) + '  (' + (totalR>=0?'+':'') + totalR.toFixed(1) + 'R)', pos(net))}
+    ${_card('Win rate', winRate + '%  (' + wins.length + 'W/' + losses.length + 'L)')}
+    ${_card('Trades', String(closed.length))}
+    ${_card('Profit factor', pf === Infinity ? '∞' : pf.toFixed(2))}
+  </div>
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.6rem .9rem;margin-bottom:1.2rem">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem">Equity curve</div>
+    ${_equitySvg(start, closed)}
+  </div>`;
+
+  const tbl = (title, rows, head) => rows.length
+    ? `<div style="margin-bottom:1.3rem"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">${title}</div>
+       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+       <thead><tr style="color:var(--text3);text-align:left">${head.map(x=>`<th style="padding:.35rem .5rem;font-weight:500;border-bottom:1px solid var(--border)">${x}</th>`).join('')}</tr></thead>
+       <tbody>${rows.join('')}</tbody></table></div></div>`
+    : `<div style="margin-bottom:1.3rem"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.4rem">${title}</div><div style="color:var(--text3);font-size:12px">None.</div></div>`;
+  const td = (v, c) => `<td style="padding:.35rem .5rem;border-bottom:1px solid var(--border)${c?';color:'+c:''}">${v}</td>`;
+  const dirBadge = d => `<b style="color:${d==='LONG'?'var(--green)':'var(--red)'}">${d}</b>`;
+
+  // OPEN
+  const openRows = open.map(t => `<tr>${td(dirBadge(t.dir))}${td('G'+t.grade)}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+(t.stage??0))}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`);
+  h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','TP1 / TP2 / TP3','Opened']);
+
+  // PENDING
+  const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+p.grade)}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(p.claude||'', 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
+  h += tbl(`🎯 Pending — Claude-approved, awaiting entry (${pending.length})`, pendRows, ['Dir','Grade','Entry','Zone','Claude','Since']);
+
+  // CLOSED (most recent first)
+  const closedRows = [...closed].reverse().map(t => {
+    const c = pos(t.totalR);
+    return `<tr>${td(dirBadge(t.dir))}${td('G'+t.grade)}${td(F(t.entry))}${td(t.exitReason)}${td((t.totalR>=0?'+':'')+t.totalR+'R', c)}${td((t.pnl>=0?'+':'')+'$'+F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
+  });
+  h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit','R','P&L','Closed']);
+
+  h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · data may lag ~5 min (GitHub CDN)</div>`;
+  el.innerHTML = h;
 }
 window.addEventListener('popstate', () => nav(location.hash.slice(1) || 'dashboard'));
 
