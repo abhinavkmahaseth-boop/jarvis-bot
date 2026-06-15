@@ -244,7 +244,7 @@
     }
     return out;
   }
-  function buildSetups(fvgs, b4h, cp, liq, pvByTf) {
+  function buildSetups(fvgs, b4h, cp, liq, pvByTf, chLevel) {
     if (b4h === 'NEUTRAL') return [];
     const setups = [];
     for (const fvg of fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED')) {
@@ -256,17 +256,20 @@
       // Entry on the correct side of price: longs at/below (discount), shorts at/above (premium).
       if (lng  && entry > cp * 1.001) continue;
       if (!lng && entry < cp * 0.999) continue;
+      // CHoCH gate: don't trade continuation once price has broken character against the
+      // trade (the bias-TF structure already flipped, even if the lagging pivots haven't).
+      if (chLevel != null && (lng ? cp < chLevel : cp > chLevel)) continue;
       const pv = pvByTf[fvg.tf] || pvByTf['4H'];   // SL from the FVG's OWN timeframe structure
       const sl = calcSL(fvg, pv, cp);
       if (Math.abs(entry - sl) / entry > 0.06) continue;
       const tps = calcTPs(fvg, entry, sl, fvgs, liq, pvByTf['4H']);
       if (tps[0].rr < 1.5) continue;
-      setups.push({ fvg, entry, sl, tps, lng });
+      setups.push({ fvg, entry, sl, tps, lng, invalidation: chLevel });
     }
     setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
     return dedupeSetups(setups).slice(0, 3);
   }
-  function buildSetupsScalp(fvgs, b1h, cp, liq) {
+  function buildSetupsScalp(fvgs, b1h, cp, liq, chLevel) {
     if (b1h === 'NEUTRAL') return [];
     const setups = [];
     for (const fvg of fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED')) {
@@ -276,10 +279,12 @@
       const entry = fvg.ce, sl = calcSLScalp(fvg, cp);
       if (lng  && entry > cp * 1.001) continue;
       if (!lng && entry < cp * 0.999) continue;
+      // CHoCH gate: skip continuation once price has broken character against the trade.
+      if (chLevel != null && (lng ? cp < chLevel : cp > chLevel)) continue;
       if (Math.abs(entry - sl) / entry > 0.005) continue;
       const tps = calcTPsScalp(fvg, entry, sl, fvgs, liq);
       if (tps[0].rr < 1.5) continue;
-      setups.push({ fvg, entry, sl, tps, lng });
+      setups.push({ fvg, entry, sl, tps, lng, invalidation: chLevel });
     }
     setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
     return dedupeSetups(setups).slice(0, 3);
@@ -330,7 +335,7 @@
       const fvgs = [...detectFVGs(d15m,'15M',pv15m).slice(-6), ...detectFVGs(d5m,'5M',pv5m).slice(-4)];
       const eqByTfS = {'15M':eq15m, '5M':eq5m};
       fvgs.forEach(v => { v.grade = grade(v, b1h, eqByTfS[v.tf] ?? eq1h); });
-      const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
+      const setups = buildSetupsScalp(fvgs, b1h, cp, liq, ch1h);
       const confS = {'15M':d5m, '5M':d5m};
       setups.forEach(s => { s.trigger = entryTrigger(confS[s.fvg.tf] || d5m, s.lng, s.fvg.gL, s.fvg.gH); });
       return {mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, eq15m:eq5m, ch4h:ch1h, ch1h:ch15m, ch15m:ch5m, liq, setups, ts};
@@ -346,7 +351,7 @@
     const fvgs = [...detectFVGs(d4h,'4H',pv4h).slice(-3), ...detectFVGs(d1h,'1H',pv1h).slice(-5), ...detectFVGs(d15m,'15M',pv15m).slice(-3)];
     const eqByTf = {'4H':eq4h, '1H':eq1h, '15M':eq15m};
     fvgs.forEach(v => { v.grade = grade(v, b4h, eqByTf[v.tf] ?? eq4h); });
-    const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m});
+    const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m}, ch4h);
     const conf = {'4H':d15m, '1H':d15m, '15M':d5m};
     setups.forEach(s => { s.trigger = entryTrigger(conf[s.fvg.tf] || d15m, s.lng, s.fvg.gL, s.fvg.gH); });
     return {mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, ch15m, liq, setups, ts};

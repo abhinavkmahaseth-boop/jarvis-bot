@@ -52,6 +52,7 @@ function formatTelegram(data, verifiedSetups) {
       msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
       msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
       if (setup.trigger) msg += `${trigLabel(setup.trigger)}\n`;
+      if (setup.invalidation != null) msg += `🧱 Void if price closes ${lng ? 'below' : 'above'} ${F(setup.invalidation)} (CHoCH)\n`;
       if (verification?.reason) msg += `✅ <i>${verification.reason}</i>\n`;
     });
   }
@@ -79,6 +80,7 @@ Entry ${entry.toFixed(2)} (FVG center) | SL ${sl.toFixed(2)} (${slPct}% risk) | 
 TP1 ${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) · TP2 ${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) · TP3 ${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)})
 Time: ${timeCtx} | Aligned with shorter-TF bias: ${aligned ? 'yes' : 'no'}
 Lower-TF entry trigger: ${setup.trigger === 'CONFIRMED' ? 'CONFIRMED (price tapped the zone and displaced in-direction)' : setup.trigger === 'AWAITING' ? 'AWAITING (price at the zone, no reversal confirmed yet)' : setup.trigger === 'PENDING' ? 'PENDING (price has not reached the zone yet)' : 'n/a'}
+Structural invalidation (CHoCH): void if price closes ${lng ? 'below' : 'above'} ${setup.invalidation != null ? setup.invalidation.toFixed(2) : 'n/a'} (where trend character flips against this trade)
 
 Check: R:R acceptable (>1.5)? setup logic sound? entry reachable from price? SL reasonable? market/time supportive?
 Respond with exactly one line: "APPROVED - <short reason>" or "REJECTED - <short reason>".`;

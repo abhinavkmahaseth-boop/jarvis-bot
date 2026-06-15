@@ -937,6 +937,7 @@ function renderAlgoScalp(sym, data) {
         <div class="s-conds">
           <span class="cond">${trigLabel(s.trigger)}</span>
           <span class="cond" style="opacity:.6">confirm TF: 5M</span>
+          ${s.invalidation != null ? `<span class="cond">🧱 void ${lng ? '<' : '>'} ${F(s.invalidation)}</span>` : ''}
         </div>
         <div class="s-mgmt">
           40% at TP1 → SL to BE immediately &nbsp;·&nbsp; 40% at TP2 → trail to TP1 &nbsp;·&nbsp;
@@ -1015,6 +1016,7 @@ function renderAlgo(sym, data) {
         <div class="s-conds">
           <span class="cond">${trigLabel(s.trigger)}</span>
           <span class="cond" style="opacity:.6">confirm TF: ${fvg.tf === '15M' ? '5M' : '15M'}</span>
+          ${s.invalidation != null ? `<span class="cond">🧱 void ${lng ? '<' : '>'} ${F(s.invalidation)}</span>` : ''}
         </div>
         <div class="s-mgmt">
           30–40% at TP1 → SL to BE &nbsp;·&nbsp; 30% at TP2 → trail to TP1 &nbsp;·&nbsp;
@@ -1733,6 +1735,7 @@ async function verifyTradeWithClaude(sym, setup, currentPrice, bias4h, bias1h) {
 - Time: ${timeContext}
 - Setup aligns with market bias: ${(lng && bias1h === 'BULLISH') || (!lng && bias1h === 'BEARISH') ? 'YES ✓' : 'NEEDS CAUTION'}
 - Lower-TF entry trigger: ${setup.trigger === 'CONFIRMED' ? 'CONFIRMED — price tapped the zone and displaced in-direction' : setup.trigger === 'AWAITING' ? 'AWAITING — price is at the zone but has not yet confirmed a reversal' : setup.trigger === 'PENDING' ? 'PENDING — price has not reached the zone yet (limit/anticipatory entry)' : 'n/a'}
+- Structural invalidation (CHoCH): idea is void if price closes ${lng ? 'below' : 'above'} ${setup.invalidation != null ? '$' + setup.invalidation.toFixed(2) : 'n/a'} — i.e. that's the level where the trend's character changes against this trade
 
 **Evaluation Criteria:**
 1. Is the R:R acceptable (>1.5)?
@@ -1907,6 +1910,7 @@ function formatAlgoForTelegramWithVerification(sym, data, verifiedSetups) {
       msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
       msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
       if (setup.trigger) msg += `${trigLabel(setup.trigger)}\n`;
+      if (setup.invalidation != null) msg += `🧱 Void if price closes ${lng ? 'below' : 'above'} ${F(setup.invalidation)} (CHoCH)\n`;
       if (verification) {
         msg += `✅ <i>${verification.reason}</i>\n`;
       }
