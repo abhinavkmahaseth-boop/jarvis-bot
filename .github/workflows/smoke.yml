@@ -1,0 +1,22 @@
+name: Engine smoke test
+
+# Runs the shared SMC engine + cron through both modes on every push, so a
+# ReferenceError or load failure (the kind `node --check` can't catch, e.g. a
+# variable that drifted between files) fails the build instead of silently
+# breaking a scheduled report.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run engine smoke test
+        run: node .github/scripts/smoke-test.js
