@@ -3,6 +3,7 @@
 
 const TG_TOKEN = process.env.TG_TOKEN;
 const TG_CHAT  = process.env.TG_CHAT_ID;
+const CLAUDE_KEY = process.env.CLAUDE_API_KEY || '';
 const MODE     = process.env.REPORT_MODE || 'swing';
 const SYMS     = (process.env.REPORT_SYMS || 'BTCUSD,SOLUSD,ETHUSD').split(',');
 const CNT      = 150;
@@ -146,24 +147,39 @@ function calcSL(fvg, pv, cp) {
   }
 }
 
+// Strictly-ordered, de-duplicated 3-rung TP ladder measured from entry.
+// Keep IN SYNC with orderTPs() in index.html.
+function orderTPs(entry, sl, lng, candidates) {
+  const risk  = Math.abs(entry - sl) || entry * 0.001;
+  const rrOf  = p => lng ? (p - entry) / risk : (entry - p) / risk;
+  const minRR = [1.5, 2.5, 4];
+  const capRR = [5, 8, 12];
+  const lbls  = ['nearest liquidity', 'mid structure', 'extended magnet'];
+  const levels = [...new Set(candidates)]
+    .filter(p => p != null && isFinite(p) && (lng ? p > entry : p < entry))
+    .map(p => ({ p, rr: rrOf(p) }))
+    .sort((a, b) => a.rr - b.rr);
+  const tps = [];
+  let floor = 0;
+  for (let i = 0; i < 3; i++) {
+    const need = Math.max(minRR[i], floor + 0.4);
+    let pick = levels.find(x => x.rr >= need && x.rr <= capRR[i] && !tps.some(t => Math.abs(t.p - x.p) < risk * 0.1));
+    if (!pick) {
+      const mult = Math.max(minRR[i], floor + 0.6);
+      pick = { p: lng ? entry + mult * risk : entry - mult * risk, rr: mult };
+    }
+    tps.push({ p: pick.p, rr: pick.rr, lbl: lbls[i] });
+    floor = pick.rr;
+  }
+  return tps;
+}
+
 function calcTPs(fvg, entry, sl, allFVGs, liq, pv4h) {
   const lng = fvg.type === 'bull';
-  const rr  = tp => lng ? (tp - entry) / (entry - sl) : (entry - tp) / (sl - entry);
-  let tp1 = lng ? liq.nearBSL : liq.nearSSL;
-  if (!tp1 || (lng && tp1 <= entry) || (!lng && tp1 >= entry))
-    tp1 = lng ? entry + 1.5*(entry-sl) : entry - 1.5*(sl-entry);
-  const opp = allFVGs.filter(f => f.type !== fvg.type && f.tf === '1H' && f.status !== 'MITIGATED' && (lng ? f.ce > tp1 : f.ce < tp1))
-    .sort((a, b) => lng ? a.ce - b.ce : b.ce - a.ce);
-  let tp2 = opp[0]?.ce || (lng ? entry + 2.5*(entry-sl) : entry - 2.5*(sl-entry));
-  const htf = lng
-    ? pv4h.h.filter(x => x.p > tp2).sort((a, b) => a.p - b.p)
-    : pv4h.l.filter(x => x.p < tp2).sort((a, b) => b.p - a.p);
-  const tp3 = htf[0]?.p || (lng ? entry + 4*(entry-sl) : entry - 4*(sl-entry));
-  return [
-    { p: tp1, rr: rr(tp1) },
-    { p: tp2, rr: rr(tp2) },
-    { p: tp3, rr: rr(tp3) },
-  ];
+  const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
+  const htf = (lng ? pv4h.h : pv4h.l).map(x => x.p);
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs, ...htf];
+  return orderTPs(entry, sl, lng, candidates);
 }
 
 function buildSetups(fvgs, b4h, cp, liq, pv4h) {
@@ -189,23 +205,10 @@ function calcSLScalp(fvg) {
 }
 
 function calcTPsScalp(fvg, entry, sl, allFVGs, liq) {
-  const lng  = fvg.type === 'bull';
-  const risk = Math.abs(entry - sl);
-  const rr   = dist => dist / risk;
-  let tp1 = lng ? liq.nearBSL : liq.nearSSL;
-  if (!tp1 || (lng && tp1 <= entry) || (!lng && tp1 >= entry))
-    tp1 = lng ? entry + 2*(entry-sl) : entry - 2*(sl-entry);
-  const opp = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED' && (lng ? f.ce > tp1 : f.ce < tp1))
-    .sort((a, b) => lng ? a.ce - b.ce : b.ce - a.ce);
-  const tp2 = opp[0]?.ce || (lng ? entry + 3*(entry-sl) : entry - 3*(sl-entry));
-  const tp3 = lng
-    ? (liq.majBSL > tp2 ? liq.majBSL : entry + 4*(entry-sl))
-    : (liq.majSSL < tp2 ? liq.majSSL : entry - 4*(sl-entry));
-  return [
-    { p: tp1, rr: rr(Math.abs(tp1-entry)) },
-    { p: tp2, rr: rr(Math.abs(tp2-entry)) },
-    { p: tp3, rr: rr(Math.abs(tp3-entry)) },
-  ];
+  const lng = fvg.type === 'bull';
+  const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs];
+  return orderTPs(entry, sl, lng, candidates);
 }
 
 function buildSetupsScalp(fvgs, b1h, cp, liq) {
@@ -264,14 +267,15 @@ async function computeAlgo(sym) {
 const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const RR = n => `1:${Number(n).toFixed(2)}`;
 
-function formatTelegram(data) {
-  const { sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, setups, ts } = data;
+function formatTelegram(data, verifiedSetups) {
+  const { sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, ts } = data;
   const isScalp = data.mode === 'scalp';
   const modeTag = isScalp ? '⚡ SCALP' : '📈 SWING';
   const tf1 = isScalp ? '1H' : '4H', tf2 = isScalp ? '15M' : '1H', tf3 = isScalp ? '5M' : '15M';
   const eq  = isScalp ? eq1h : eq4h;
   const ch  = isScalp ? ch1h : ch4h;
   const name = sym.replace('USD', '');
+  const usingClaude = !!CLAUDE_KEY;
 
   let msg = `📊 <b>JARVIS — ${name}</b>  [${modeTag}]\n`;
   msg += `💰 Price: <b>${F(cp)}</b>  ·  ${ts}\n\n`;
@@ -279,11 +283,15 @@ function formatTelegram(data) {
   msg += `EQ: ${F(eq)}  ·  CHoCH: ${F(ch)}\n`;
   msg += `BSL: <b>${F(liq.majBSL)}</b>  ·  SSL: <b>${F(liq.majSSL)}</b>  ·  Psych: ${F(liq.psych)}\n`;
 
-  if (!setups?.length) {
-    msg += `\n❌ <b>NO SETUP</b> — No valid trade near current price`;
+  if (!verifiedSetups.length) {
+    msg += usingClaude
+      ? `\n❌ <b>NO TRADE</b> — No setups passed Claude verification`
+      : `\n❌ <b>NO SETUP</b> — No valid trade near current price`;
   } else {
-    setups.forEach((s, i) => {
-      const { fvg, entry, sl, tps, lng } = s;
+    msg += `\n✅ <b>${verifiedSetups.length} ${usingClaude ? 'Verified ' : ''}Setup${verifiedSetups.length > 1 ? 's' : ''}</b>\n`;
+    verifiedSetups.forEach((item, i) => {
+      const { setup, verification } = item;
+      const { fvg, entry, sl, tps, lng } = setup;
       const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
       msg += `\n━━━━━━━━━━━━━━━━\n`;
       msg += `${lng ? '🟢 LONG' : '🔴 SHORT'} Setup ${i+1} · Grade <b>${fvg.grade}</b> · ${fvg.tf} FVG${fvg.swept ? ' ✓ Swept' : ''}\n`;
@@ -292,9 +300,64 @@ function formatTelegram(data) {
       msg += `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`;
       msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
       msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
+      if (verification?.reason) msg += `✅ <i>${verification.reason}</i>\n`;
     });
   }
   return msg;
+}
+
+// ── Claude verification (server-side) ─────────────────────────────────────────
+async function verifyTrade(sym, setup, data) {
+  if (!CLAUDE_KEY) return null;
+  const { fvg, entry, sl, tps, lng } = setup;
+  const risk = Math.abs(entry - sl);
+  const rr = (Math.abs(tps[0].p - entry) / risk).toFixed(2);
+  const slPct = ((risk / entry) * 100).toFixed(2);
+  const hour = new Date().getUTCHours();
+  const timeCtx = hour < 8 ? 'Asian session' : hour < 16 ? 'European/US session' : 'overnight/low liquidity';
+  const aligned = (lng && data.b1h === 'BULLISH') || (!lng && data.b1h === 'BEARISH');
+  const prompt = `You are a professional crypto trader reviewing an SMC trade setup. Decide if it is worth taking.
+
+Symbol: ${sym}.P (Delta Exchange India perp)
+Direction: ${lng ? 'LONG' : 'SHORT'}
+Current price: ${data.cp}
+Bias — ${data.mode === 'scalp' ? '1H' : '4H'}: ${data.b4h}, ${data.mode === 'scalp' ? '15M' : '1H'}: ${data.b1h}
+FVG: ${fvg.type === 'bull' ? 'bullish/demand' : 'bearish/supply'} on ${fvg.tf}, status ${fvg.status}${fvg.swept ? ', swept' : ''}, grade ${fvg.grade}
+Entry ${entry.toFixed(2)} (FVG center) | SL ${sl.toFixed(2)} (${slPct}% risk) | R:R to TP1 1:${rr}
+TP1 ${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) · TP2 ${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) · TP3 ${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)})
+Time: ${timeCtx} | Aligned with shorter-TF bias: ${aligned ? 'yes' : 'no'}
+
+Check: R:R acceptable (>1.5)? setup logic sound? entry reachable from price? SL reasonable? market/time supportive?
+Respond with exactly one line: "APPROVED - <short reason>" or "REJECTED - <short reason>".`;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 150, messages: [{ role: 'user', content: prompt }] }),
+    });
+    if (!r.ok) { console.error(`  Claude HTTP ${r.status}`); return null; }
+    const j = await r.json();
+    const text = (j.content?.[0]?.text || '').trim();
+    if (!text) return null;
+    const approved = text.toUpperCase().startsWith('APPROVED');
+    const reason = text.replace(/^\s*(APPROVED|REJECTED)\s*[-–:]?\s*/i, '').trim();
+    return { approved, reason: reason || (approved ? 'passed review' : 'rejected') };
+  } catch (e) { console.error('  Claude error:', e.message); return null; }
+}
+
+// Returns [{setup, verification}] — approved-only when a Claude key is set
+// (fails closed on errors), otherwise all setups with verification:null.
+async function verifySetups(sym, data) {
+  if (!CLAUDE_KEY || !data.setups?.length) {
+    return (data.setups || []).map(setup => ({ setup, verification: null }));
+  }
+  const out = [];
+  for (const setup of data.setups) {
+    const v = await verifyTrade(sym, setup, data);
+    if (v?.approved) out.push({ setup, verification: v });
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return out;
 }
 
 // ── Send ──────────────────────────────────────────────────────────────────────
@@ -323,13 +386,15 @@ async function main() {
 
   console.log(`JARVIS report — ${MODE} — ${SYMS.join(', ')} — ${now} IST`);
 
-  await sendTg(`🤖 <b>JARVIS Scheduled Report</b>\n📅 ${now} IST\nMode: ${MODE.toUpperCase()} (${SYMS.map(s => s.replace('USD','')).join(' · ')})`);
+  const claudeTag = CLAUDE_KEY ? ' · 🤖 Claude-verified' : '';
+  await sendTg(`🤖 <b>JARVIS Scheduled Report</b>\n📅 ${now} IST\nMode: ${MODE.toUpperCase()} (${SYMS.map(s => s.replace('USD','')).join(' · ')})${claudeTag}`);
 
   for (const sym of SYMS) {
     try {
       console.log(`  ${sym}...`);
       const data = await computeAlgo(sym);
-      await sendTg(formatTelegram(data));
+      const verifiedSetups = await verifySetups(sym, data);
+      await sendTg(formatTelegram(data, verifiedSetups));
       await new Promise(r => setTimeout(r, 600));
     } catch (e) {
       console.error(`  ${sym} failed:`, e.message);

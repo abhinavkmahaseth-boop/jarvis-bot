@@ -989,16 +989,41 @@ function calcSL(fvg, pv, cp) {
     return Math.max(fvg.gH, nh.length ? Math.min(...nh.map(x => x.p)) : fvg.gH) + buf;
   }
 }
+// Build a clean, strictly-ordered 3-rung TP ladder from candidate structural
+// levels. Every target is measured from `entry`; the ladder is guaranteed
+// monotonic (ascending for longs, descending for shorts), de-duplicated, and
+// free of absurd "first targets" — levels too far for a rung are skipped, with
+// risk-multiple fallbacks filling gaps so TP1 < TP2 < TP3 always holds.
+function orderTPs(entry, sl, lng, candidates) {
+  const risk  = Math.abs(entry - sl) || entry * 0.001;
+  const rrOf  = p => lng ? (p - entry) / risk : (entry - p) / risk;
+  const minRR = [1.5, 2.5, 4];    // each rung must clear at least this R:R
+  const capRR = [5, 8, 12];       // a structural level beyond this is too far for that rung
+  const lbls  = ['nearest liquidity', 'mid structure', 'extended magnet'];
+  const levels = [...new Set(candidates)]
+    .filter(p => p != null && isFinite(p) && (lng ? p > entry : p < entry))
+    .map(p => ({ p, rr: rrOf(p) }))
+    .sort((a, b) => a.rr - b.rr);
+  const tps = [];
+  let floor = 0;
+  for (let i = 0; i < 3; i++) {
+    const need = Math.max(minRR[i], floor + 0.4);
+    let pick = levels.find(x => x.rr >= need && x.rr <= capRR[i] && !tps.some(t => Math.abs(t.p - x.p) < risk * 0.1));
+    if (!pick) {
+      const mult = Math.max(minRR[i], floor + 0.6);
+      pick = { p: lng ? entry + mult * risk : entry - mult * risk, rr: mult };
+    }
+    tps.push({ p: pick.p, rr: pick.rr, lbl: lbls[i] });
+    floor = pick.rr;
+  }
+  return tps;
+}
 function calcTPs(fvg, entry, sl, allFVGs, liq, pv4h) {
   const lng = fvg.type === 'bull';
-  const rr = tp => lng ? (tp - entry) / (entry - sl) : (entry - tp) / (sl - entry);
-  let tp1 = lng ? liq.nearBSL : liq.nearSSL;
-  if (!tp1 || (lng && tp1 <= entry) || (!lng && tp1 >= entry)) tp1 = lng ? entry + 1.5*(entry-sl) : entry - 1.5*(sl-entry);
-  const opp = allFVGs.filter(f => f.type !== fvg.type && f.tf === '1H' && f.status !== 'MITIGATED' && (lng ? f.ce > tp1 : f.ce < tp1)).sort((a,b) => lng ? a.ce - b.ce : b.ce - a.ce);
-  let tp2 = opp[0]?.ce || (lng ? entry + 2.5*(entry-sl) : entry - 2.5*(sl-entry));
-  const htf = lng ? pv4h.h.filter(x => x.p > tp2).sort((a,b) => a.p-b.p) : pv4h.l.filter(x => x.p < tp2).sort((a,b) => b.p-a.p);
-  let tp3 = htf[0]?.p || (lng ? entry + 4*(entry-sl) : entry - 4*(sl-entry));
-  return [{p:tp1,rr:rr(tp1),lbl:'nearest liquidity'},{p:tp2,rr:rr(tp2),lbl:'next 1H FVG'},{p:tp3,rr:rr(tp3),lbl:'4H magnet'}];
+  const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
+  const htf = (lng ? pv4h.h : pv4h.l).map(x => x.p);
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs, ...htf];
+  return orderTPs(entry, sl, lng, candidates);
 }
 function buildSetups(fvgs, b4h, cp, liq, pv4h) {
   if (b4h === 'NEUTRAL') return [];
@@ -1025,21 +1050,9 @@ function calcSLScalp(fvg) {
 }
 function calcTPsScalp(fvg, entry, sl, allFVGs, liq) {
   const lng = fvg.type === 'bull';
-  const risk = Math.abs(entry - sl);
-  const rr = dist => dist / risk;
-  let tp1 = lng ? liq.nearBSL : liq.nearSSL;
-  if (!tp1 || (lng && tp1 <= entry) || (!lng && tp1 >= entry))
-    tp1 = lng ? entry + 2*(entry-sl) : entry - 2*(sl-entry);
-  const opp = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED' && (lng ? f.ce > tp1 : f.ce < tp1))
-    .sort((a,b) => lng ? a.ce - b.ce : b.ce - a.ce);
-  let tp2 = opp[0]?.ce || (lng ? entry + 3*(entry-sl) : entry - 3*(sl-entry));
-  let tp3 = lng ? (liq.majBSL > tp2 ? liq.majBSL : entry + 4*(entry-sl))
-                : (liq.majSSL < tp2 ? liq.majSSL : entry - 4*(sl-entry));
-  return [
-    {p:tp1, rr:rr(Math.abs(tp1-entry)), lbl:'nearest 15M liquidity'},
-    {p:tp2, rr:rr(Math.abs(tp2-entry)), lbl:'next 15M FVG opposite'},
-    {p:tp3, rr:rr(Math.abs(tp3-entry)), lbl:'1H liquidity pool'},
-  ];
+  const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
+  const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...oppFVGs];
+  return orderTPs(entry, sl, lng, candidates);
 }
 function buildSetupsScalp(fvgs, b1h, cp, liq) {
   if (b1h === 'NEUTRAL') return [];
@@ -1589,13 +1602,9 @@ function logTg(msg, cls = '') {
 
 async function sendSymAlert(sym, btn) {
   const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = '…';
+  btn.disabled = true; btn.textContent = getClaudeApiKey() ? '🤖' : '…';
   try {
-    if (!outputs[sym]?.algoData) {
-      const data = await computeAlgo(sym);
-      outputs[sym].algoData = data;
-    }
-    await sendTelegramAlert(formatAlgoForTelegram(sym, outputs[sym].algoData));
+    await sendVerifiedReport(sym, outputs[sym]?.algoData);
     btn.textContent = '✓'; btn.style.color = 'var(--green)';
   } catch(e) {
     btn.textContent = '✗'; btn.style.color = 'var(--red)';
@@ -1607,13 +1616,11 @@ async function sendSymAlert(sym, btn) {
 
 async function sendAllAlertsToTelegram(btn) {
   const orig = btn.textContent;
-  btn.disabled = true; btn.textContent = '⏳ Sending…';
+  btn.disabled = true; btn.textContent = getClaudeApiKey() ? '⏳ Verifying…' : '⏳ Sending…';
   let sent = 0;
   for (const sym of SYMS) {
     try {
-      const data = await computeAlgo(sym);
-      outputs[sym].algoData = data;
-      await sendTelegramAlert(formatAlgoForTelegram(sym, data));
+      await sendVerifiedReport(sym);
       sent++;
       await new Promise(r => setTimeout(r, 600));
     } catch {}
@@ -2047,38 +2054,41 @@ async function sendSetupAlertWithVerification(sym, idx) {
   } catch(e) { alert('Telegram error: ' + e.message); }
 }
 
+// Run every setup for `sym` through Claude; returns only approved setups
+// (or all setups untouched when no Claude key is configured).
+async function buildVerifiedSetups(sym, data) {
+  if (!getClaudeApiKey() || !data.setups?.length) {
+    return (data.setups || []).map(setup => ({ setup, verification: null }));
+  }
+  const out = [];
+  for (let i = 0; i < data.setups.length; i++) {
+    const v = await verifyTradeWithClaude(sym, data.setups[i], data.cp, data.b4h, data.b1h);
+    if (v?.approved) out.push({ setup: data.setups[i], verification: v });
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return out;
+}
+
+// Compute → Claude-verify → send a full report for one symbol. Shared by the
+// scheduler, "Alert All", and per-symbol alerts so nothing reaches Telegram
+// without passing Claude (when a key is set).
+async function sendVerifiedReport(sym, data) {
+  data = data || await computeAlgo(sym);
+  if (outputs[sym]) outputs[sym].algoData = data;
+  const verifiedSetups = await buildVerifiedSetups(sym, data);
+  await sendTelegramAlert(formatAlgoForTelegramWithVerification(sym, data, verifiedSetups));
+  return { total: data.setups?.length || 0, verified: verifiedSetups.length };
+}
+
 async function runScheduledAlgoReportWithVerification() {
   const { sym } = getReportSettings();
   if (!getTgToken() || !getTgChatId()) { logTg('Report: Telegram not configured', 'warn'); return; }
   logTg(`📊 Running algo report for ${sym}…`);
-
   try {
-    const data = await computeAlgo(sym);
-    const cp = data.cp;
-    const bias4h = data.b4h;
-    const bias1h = data.b1h;
-
-    let verifiedSetups = [];
-    if (getClaudeApiKey() && data.setups?.length) {
-      for (let i = 0; i < data.setups.length; i++) {
-        const verification = await verifyTradeWithClaude(sym, data.setups[i], cp, bias4h, bias1h);
-        if (verification?.approved) {
-          verifiedSetups.push({
-            setup: data.setups[i],
-            verification: verification
-          });
-        }
-        await new Promise(r => setTimeout(r, 500));
-      }
-    } else {
-      verifiedSetups = data.setups.map(setup => ({setup, verification: null}));
-    }
-
-    const msg = formatAlgoForTelegramWithVerification(sym, data, verifiedSetups);
-    await sendTelegramAlert(msg);
+    const r = await sendVerifiedReport(sym);
     localStorage.setItem('report_last_run', Date.now().toString());
     updateReportUI();
-    logTg(`📊 Algo report sent for ${sym} (${verifiedSetups.length}/${data.setups.length} verified)`, 'ok');
+    logTg(`📊 Algo report sent for ${sym} (${r.verified}/${r.total} verified)`, 'ok');
   } catch(e) {
     logTg(`Report error: ${e.message}`, 'err');
   }
@@ -2099,10 +2109,13 @@ function formatAlgoForTelegramWithVerification(sym, data, verifiedSetups) {
   msg += `EQ: ${F(eq)}  ·  CHoCH: ${F(ch)}\n`;
   msg += `BSL: <b>${F(liq.majBSL)}</b>  ·  SSL: <b>${F(liq.majSSL)}</b>  ·  Psych: ${F(liq.psych)}\n`;
 
+  const usingClaude = !!getClaudeApiKey();
   if (!verifiedSetups.length) {
-    msg += `\n❌ <b>NO TRADE</b> — No valid setups passed Claude verification`;
+    msg += usingClaude
+      ? `\n❌ <b>NO TRADE</b> — No setups passed Claude verification`
+      : `\n❌ <b>NO SETUP</b> — No valid trade near current price`;
   } else {
-    msg += `\n✅ <b>${verifiedSetups.length} Verified Setup${verifiedSetups.length > 1 ? 's' : ''}</b>\n`;
+    msg += `\n✅ <b>${verifiedSetups.length} ${usingClaude ? 'Verified ' : ''}Setup${verifiedSetups.length > 1 ? 's' : ''}</b>\n`;
     verifiedSetups.forEach((item, i) => {
       const {setup, verification} = item;
       const {fvg, entry, sl, tps, lng} = setup;
