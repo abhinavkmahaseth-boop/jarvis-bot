@@ -1887,6 +1887,11 @@ function saveClaudeSettings() {
   const key = document.getElementById('claude-api-key')?.value.trim();
   const st = document.getElementById('claude-status');
   if (!key) { if (st) st.textContent = '⚠ Enter an API key first'; return; }
+  // Ignore the masked placeholder so re-saving doesn't corrupt the stored key
+  if (key.includes('...') || key.includes('•')) {
+    if (st) { st.textContent = '✓ Key already saved'; st.style.color = 'var(--green)'; }
+    return;
+  }
   localStorage.setItem('claude_api_key', key);
   if (st) { st.textContent = '✓ Saved'; st.style.color = 'var(--green)'; }
 }
@@ -1958,27 +1963,40 @@ APPROVED - Strong 1H FVG, aligned with bullish bias, good confluence
 REJECTED - SL too tight for liquidity, entry already broken`;
 
   try {
-    // Call Vercel API (backend proxy - API key stays server-side, no CORS)
-    const response = await fetch('/api/verifyTrade', {
+    // Call Claude API directly from the browser (CORS enabled via the official
+    // anthropic-dangerous-direct-browser-access header). No backend proxy needed.
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      logTg(`Claude verification error: ${error.error}`, 'err');
+      let msg = `HTTP ${response.status}`;
+      try { const e = await response.json(); msg = e.error?.message || msg; } catch (_) {}
+      window._claudeErr = msg;
+      logTg(`Claude verification error: ${msg}`, 'err');
       return null;
     }
 
     const data = await response.json();
+    const text = (data.content?.[0]?.text || '').trim();
 
-    if (!data.success) {
-      logTg(`Claude verification error: ${data.error}`, 'err');
+    if (!text) {
+      window._claudeErr = 'empty response';
+      logTg('Claude verification error: empty response', 'err');
       return null;
     }
 
-    const text = data.result;
     const approved = text.toUpperCase().startsWith('APPROVED');
     const lines = text.split('\n');
     const reason = lines.length > 1 ? lines.slice(1).join(' ').trim() : '';
@@ -1989,6 +2007,7 @@ REJECTED - SL too tight for liquidity, entry already broken`;
       fullResponse: text
     };
   } catch (e) {
+    window._claudeErr = e.message;
     logTg(`Claude verification error: ${e.message}`, 'err');
     return null;
   }
@@ -2115,6 +2134,7 @@ async function testClaudeVerification() {
   }
 
   if (st) { st.textContent = '⏳ Testing...'; st.style.color = 'var(--text2)'; }
+  window._claudeErr = '';
 
   const dummySetup = {
     fvg: { type: 'bull', gL: 64000, gH: 64500, ce: 64250, status: 'FRESH', swept: false, tf: '1H' },
@@ -2136,7 +2156,7 @@ async function testClaudeVerification() {
       st.style.color = result.approved ? 'var(--green)' : 'var(--amber)';
     }
   } else {
-    if (st) { st.textContent = '✗ Connection failed'; st.style.color = 'var(--red)'; }
+    if (st) { st.textContent = `✗ Failed: ${window._claudeErr || 'unknown error'}`; st.style.color = 'var(--red)'; }
   }
 }
 
