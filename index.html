@@ -499,6 +499,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
         <span class="sc-desc" style="margin-top:.5rem;display:block">1. Message <b>@BotFather</b> → /newbot → paste token above<br>2. Send any message to your bot, then click Auto-fetch</span>
       </div>
 
+      <!-- Claude AI Trade Verification -->
+      <div class="settings-card">
+        <div class="sc-title">🤖 Claude AI Verification</div>
+        <div class="sc-field">
+          <label class="sc-label">Claude API Key</label>
+          <input type="password" id="claude-api-key" class="sc-input" placeholder="sk-ant-..." autocomplete="off">
+          <div class="sc-desc">Get from: <b>console.anthropic.com/dashboard/keys</b></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">
+          <button class="btn btn-save" style="padding:8px 18px" onclick="saveClaudeSettings()">Save</button>
+          <button class="btn btn-algo" style="padding:8px 18px" onclick="testClaudeVerification()">Test</button>
+        </div>
+        <div class="key-ok" id="claude-status" style="margin-top:.4rem">Verification optional — trades send to Telegram with AI reasoning if enabled</div>
+      </div>
+
       <!-- Scheduled Algo Reports -->
       <div class="settings-card">
         <div class="sc-title">📊 Scheduled Algo Reports</div>
@@ -1112,7 +1127,7 @@ function renderAlgoScalp(sym, data) {
         </div>
         <div style="display:flex;gap:6px;margin-top:.65rem">
           <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
-          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlert('${sym}',${i})">📤 Send Alert</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
         </div>
       </div>`;
     });
@@ -1192,7 +1207,7 @@ function renderAlgo(sym, data) {
         </div>
         <div style="display:flex;gap:6px;margin-top:.65rem">
           <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
-          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlert('${sym}',${i})">📤 Send Alert</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
         </div>
       </div>`;
     });
@@ -1527,8 +1542,8 @@ function scheduleAlgoReport() {
   logTg(`📊 Algo report scheduled: ${sym} every ${hours}h`);
   updateReportUI();
   _reportTimer = setTimeout(async () => {
-    await runScheduledAlgoReport();
-    _reportTimer = setInterval(runScheduledAlgoReport, ms);
+    await runScheduledAlgoReportWithVerification();
+    _reportTimer = setInterval(runScheduledAlgoReportWithVerification, ms);
   }, delay);
   setInterval(updateReportUI, 60000);
 }
@@ -1539,7 +1554,7 @@ async function sendInstantReport(btn) {
   const st = document.getElementById('report-status');
   if (st) { st.textContent = '⏳ Running analysis…'; st.style.color = 'var(--text2)'; }
   try {
-    await runScheduledAlgoReport();
+    await runScheduledAlgoReportWithVerification();
     if (st) { st.textContent = '✓ Report sent to Telegram'; st.style.color = 'var(--green)'; }
   } catch(e) {
     if (st) { st.textContent = '✗ ' + e.message; st.style.color = 'var(--red)'; }
@@ -1865,8 +1880,273 @@ function exportJournalCSV() {
   a.click();
 }
 
+// ── Claude Trade Verification ─────────────────────────────────────────────────
+function getClaudeApiKey() { return localStorage.getItem('claude_api_key') || ''; }
+
+function saveClaudeSettings() {
+  const key = document.getElementById('claude-api-key')?.value.trim();
+  const st = document.getElementById('claude-status');
+  if (!key) { if (st) st.textContent = '⚠ Enter an API key first'; return; }
+  localStorage.setItem('claude_api_key', key);
+  if (st) { st.textContent = '✓ Saved'; st.style.color = 'var(--green)'; }
+}
+
+function loadClaudeSettingsUI() {
+  const key = getClaudeApiKey();
+  if (key) {
+    const el = document.getElementById('claude-api-key');
+    if (el) el.value = key.substring(0, 20) + '...';
+  }
+}
+
+async function verifyTradeWithClaude(sym, setup, currentPrice, bias4h, bias1h) {
+  const apiKey = getClaudeApiKey();
+  if (!apiKey) return null;
+
+  const { fvg, entry, sl, tps, lng } = setup;
+  const direction = lng ? 'LONG' : 'SHORT';
+  const risk = Math.abs(entry - sl);
+  const reward = Math.abs(tps[0].p - entry);
+  const rr = (reward / risk).toFixed(2);
+  const slPct = ((risk / entry) * 100).toFixed(2);
+
+  const now = new Date();
+  const hour = now.getUTCHours();
+  const timeContext = hour >= 0 && hour < 8 ? 'Asian session' : hour >= 8 && hour < 16 ? 'European/US session' : 'overnight/low liquidity';
+
+  const prompt = `You are a professional crypto trader reviewing a trade setup. Analyze this trade for validity and risk management.
+
+**Trade Details:**
+- Symbol: ${sym}.P (perpetual futures on Delta Exchange India)
+- Direction: ${direction}
+- Current Price: $${currentPrice.toLocaleString('en-IN', {maximumFractionDigits:2})}
+- Market Bias (4H): ${bias4h}, (1H): ${bias1h}
+
+**Setup Structure:**
+- FVG Type: ${fvg.type === 'bull' ? 'BULLISH (demand)' : 'BEARISH (supply)'} on ${fvg.tf}
+- FVG Level: $${fvg.gL.toFixed(2)} – $${fvg.gH.toFixed(2)} (center: $${fvg.ce.toFixed(2)})
+- FVG Status: ${fvg.status} ${fvg.swept ? '(swept)' : ''}
+- Grade: ${fvg.grade}
+
+**Entry & Risk:**
+- Entry: $${entry.toFixed(2)} (FVG center)
+- Stop Loss: $${sl.toFixed(2)}
+- Risk: $${risk.toFixed(2)} (${slPct}% from entry)
+- Risk/Reward: 1:${rr}
+
+**Targets:**
+- TP1: $${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) — ${tps[0].lbl}
+- TP2: $${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) — ${tps[1].lbl}
+- TP3: $${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)}) — ${tps[2].lbl}
+
+**Market Context:**
+- Time: ${timeContext}
+- Setup aligns with market bias: ${(lng && bias1h === 'BULLISH') || (!lng && bias1h === 'BEARISH') ? 'YES ✓' : 'NEEDS CAUTION'}
+
+**Evaluation Criteria:**
+1. Is the R:R acceptable (>1.5)?
+2. Does the setup logic make sense? (FVG tap, valid sweep, confluence?)
+3. Is entry zone reachable from current price?
+4. Is SL reasonable (<1% risk)?
+5. Does market condition (time/bias) support this trade?
+
+Respond ONLY with:
+APPROVED or REJECTED
+
+Then a 1-line reason max. Example:
+APPROVED - Strong 1H FVG, aligned with bullish bias, good confluence
+REJECTED - SL too tight for liquidity, entry already broken`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      logTg(`Claude API error: ${error.error?.message || 'Unknown'}`, 'err');
+      return null;
+    }
+
+    const data = await response.json();
+    const result = data.content[0].text.trim();
+    const approved = result.toUpperCase().startsWith('APPROVED');
+    const lines = result.split('\n');
+    const reason = lines.length > 1 ? lines.slice(1).join(' ').trim() : '';
+
+    return {
+      approved,
+      reason: reason || (approved ? 'Trade passed verification' : 'Trade rejected by AI review'),
+      fullResponse: result
+    };
+  } catch (e) {
+    logTg(`Claude verification error: ${e.message}`, 'err');
+    return null;
+  }
+}
+
+async function sendSetupAlertWithVerification(sym, idx) {
+  const data = outputs[sym]?.algoData;
+  if (!data) { alert('Run analysis first'); return; }
+  const s = data.setups?.[idx];
+  if (!s) return;
+
+  const { fvg, entry, sl, tps, lng } = s;
+  const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
+  const now = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+
+  let verification = null;
+  if (getClaudeApiKey()) {
+    verification = await verifyTradeWithClaude(sym, s, data.cp, data.b4h || data.b1h, data.b1h || data.b15m);
+    if (!verification?.approved) {
+      alert(`❌ Trade rejected by Claude AI: ${verification?.reason || 'Failed verification'}`);
+      logTg(`Setup ${idx+1} for ${sym} rejected by Claude`, 'warn');
+      return;
+    }
+  }
+
+  let msg = `📣 <b>JARVIS Alert — ${sym}</b>\n` + `${lng ? '🟢 LONG' : '🔴 SHORT'}  Grade <b>${fvg.grade}</b>  ${fvg.tf} FVG${fvg.swept ? ' ✓ Swept' : ''}\n\n` + `📍 Entry zone: <b>${F(fvg.gL)} – ${F(fvg.gH)}</b>  (CE: ${F(entry)})\n` + `🛑 SL: <b>${F(sl)}</b>  (${slPct}%)\n` + `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n` + `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n` + `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
+
+  if (verification) {
+    msg += `\n✅ <i>Verified by Claude AI</i>\n<i>${verification.reason}</i>`;
+  }
+
+  msg += `\n<i>via JARVIS · ${now} IST</i>`;
+
+  try {
+    await sendTelegramAlert(msg);
+    logTg(`Setup ${idx+1} sent with Claude verification`, 'ok');
+  } catch(e) { alert('Telegram error: ' + e.message); }
+}
+
+async function runScheduledAlgoReportWithVerification() {
+  const { sym } = getReportSettings();
+  if (!getTgToken() || !getTgChatId()) { logTg('Report: Telegram not configured', 'warn'); return; }
+  logTg(`📊 Running algo report for ${sym}…`);
+
+  try {
+    const data = await computeAlgo(sym);
+    const cp = data.cp;
+    const bias4h = data.b4h;
+    const bias1h = data.b1h;
+
+    let verifiedSetups = [];
+    if (getClaudeApiKey() && data.setups?.length) {
+      for (let i = 0; i < data.setups.length; i++) {
+        const verification = await verifyTradeWithClaude(sym, data.setups[i], cp, bias4h, bias1h);
+        if (verification?.approved) {
+          verifiedSetups.push({
+            setup: data.setups[i],
+            verification: verification
+          });
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } else {
+      verifiedSetups = data.setups.map(setup => ({setup, verification: null}));
+    }
+
+    const msg = formatAlgoForTelegramWithVerification(sym, data, verifiedSetups);
+    await sendTelegramAlert(msg);
+    localStorage.setItem('report_last_run', Date.now().toString());
+    updateReportUI();
+    logTg(`📊 Algo report sent for ${sym} (${verifiedSetups.length}/${data.setups.length} verified)`, 'ok');
+  } catch(e) {
+    logTg(`Report error: ${e.message}`, 'err');
+  }
+}
+
+function formatAlgoForTelegramWithVerification(sym, data, verifiedSetups) {
+  const {cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, liq, ts} = data;
+  const isScalp = data.mode === 'scalp';
+  const modeTag = isScalp ? '⚡ SCALP (1H/15M/5M)' : 'SWING (4H/1H/15M)';
+  const tf1 = isScalp ? '1H' : '4H', tf2 = isScalp ? '15M' : '1H', tf3 = isScalp ? '5M' : '15M';
+  const bv1 = b4h, bv2 = b1h, bv3 = b15m;
+  const eq  = isScalp ? eq1h : eq4h;
+  const ch  = isScalp ? ch1h : ch4h;
+
+  let msg = `📊 <b>JARVIS — ${sym}</b>  [${modeTag}]\n`;
+  msg += `💰 Price: <b>${F(cp)}</b>  ·  ${ts}\n\n`;
+  msg += `<b>${tf1}:</b> ${bv1}  ·  <b>${tf2}:</b> ${bv2}  ·  <b>${tf3}:</b> ${bv3}\n`;
+  msg += `EQ: ${F(eq)}  ·  CHoCH: ${F(ch)}\n`;
+  msg += `BSL: <b>${F(liq.majBSL)}</b>  ·  SSL: <b>${F(liq.majSSL)}</b>  ·  Psych: ${F(liq.psych)}\n`;
+
+  if (!verifiedSetups.length) {
+    msg += `\n❌ <b>NO TRADE</b> — No valid setups passed Claude verification`;
+  } else {
+    msg += `\n✅ <b>${verifiedSetups.length} Verified Setup${verifiedSetups.length > 1 ? 's' : ''}</b>\n`;
+    verifiedSetups.forEach((item, i) => {
+      const {setup, verification} = item;
+      const {fvg, entry, sl, tps, lng} = setup;
+      const slPct = (Math.abs(entry - sl) / entry * 100).toFixed(2);
+      msg += `\n━━━━━━━━━━━━━━━━\n`;
+      msg += `${lng ? '🟢 LONG' : '🔴 SHORT'} Setup ${i+1} · Grade <b>${fvg.grade}</b> · ${fvg.tf} FVG${fvg.swept ? ' ✓ Swept' : ''}\n`;
+      msg += `📍 Entry: <b>${F(fvg.gL)} – ${F(fvg.gH)}</b>  (CE: ${F(entry)})\n`;
+      msg += `🛑 SL: <b>${F(sl)}</b>  (${slPct}%)\n`;
+      msg += `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`;
+      msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
+      msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
+      if (verification) {
+        msg += `✅ <i>${verification.reason}</i>\n`;
+      }
+    });
+  }
+  const now = new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata', hour12:true, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  msg += `\n<i>via JARVIS · ${now} IST</i>`;
+  return msg;
+}
+
+async function testClaudeVerification() {
+  const key = getClaudeApiKey();
+  const st = document.getElementById('claude-status');
+
+  if (!key) {
+    if (st) { st.textContent = '⚠ Enter API key first'; st.style.color = 'var(--amber)'; }
+    return;
+  }
+
+  if (st) { st.textContent = '⏳ Testing...'; st.style.color = 'var(--text2)'; }
+
+  const dummySetup = {
+    fvg: { type: 'bull', gL: 64000, gH: 64500, ce: 64250, status: 'FRESH', swept: false, tf: '1H' },
+    entry: 64250,
+    sl: 63800,
+    tps: [
+      { p: 65000, rr: 1.7, lbl: 'nearest liquidity' },
+      { p: 65500, rr: 2.5, lbl: 'next FVG' },
+      { p: 66000, rr: 3.3, lbl: '4H magnet' }
+    ],
+    lng: true
+  };
+
+  const result = await verifyTradeWithClaude('BTCUSD', dummySetup, 64400, 'BULLISH', 'BULLISH');
+
+  if (result) {
+    if (st) {
+      st.textContent = `✓ Connected • ${result.reason}`;
+      st.style.color = result.approved ? 'var(--green)' : 'var(--amber)';
+    }
+  } else {
+    if (st) { st.textContent = '✗ Connection failed'; st.style.color = 'var(--red)'; }
+  }
+}
+
 buildUI();
 loadTgSettingsUI();
+loadClaudeSettingsUI();
 loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();
 loadReportSettingsUI();
