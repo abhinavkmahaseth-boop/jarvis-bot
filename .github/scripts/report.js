@@ -20,7 +20,11 @@ async function fetchOHLCV(sym, res, count) {
   const r = await fetch(url);
   const j = await r.json();
   if (!j.success || !j.result?.length) throw new Error(`No data: ${sym} ${res}`);
-  return j.result.sort((a, b) => a.time - b.time);
+  const bars = j.result.sort((a, b) => a.time - b.time);
+  // Drop the still-forming candle so structure/FVG detection never repaints on an open bar.
+  const last = bars[bars.length - 1];
+  if (last && (last.time + sec) > now) bars.pop();
+  return bars;
 }
 
 // ── SMC Engine ────────────────────────────────────────────────────────────────
@@ -40,13 +44,19 @@ function pivots(c, lb) {
 }
 
 function bias(pv) {
-  const { h, l } = pv;
-  if (h.length < 2 || l.length < 2) return 'NEUTRAL';
-  const hh = h[h.length-1].p > h[h.length-2].p, hl = l[l.length-1].p > l[l.length-2].p;
-  const lh = h[h.length-1].p < h[h.length-2].p, ll = l[l.length-1].p < l[l.length-2].p;
-  if (hh && hl) return 'BULLISH';
-  if (lh && ll) return 'BEARISH';
-  return 'NEUTRAL';
+  // Direction of the most recent break of structure over the chronologically
+  // merged swing sequence (higher-high = bullish BOS, lower-low = bearish BOS).
+  // Keep IN SYNC with bias() in index.html.
+  const seq = [...pv.h.map(x => ({ i: x.i, p: x.p, t: 'H' })),
+               ...pv.l.map(x => ({ i: x.i, p: x.p, t: 'L' }))]
+              .sort((a, b) => a.i - b.i);
+  let lastBull = -1, lastBear = -1, prevH = null, prevL = null;
+  seq.forEach((s, k) => {
+    if (s.t === 'H') { if (prevH != null && s.p > prevH) lastBull = k; prevH = s.p; }
+    else             { if (prevL != null && s.p < prevL) lastBear = k; prevL = s.p; }
+  });
+  if (lastBull < 0 && lastBear < 0) return 'NEUTRAL';
+  return lastBull > lastBear ? 'BULLISH' : 'BEARISH';
 }
 
 function eqLevel(pv) {
@@ -68,11 +78,17 @@ function avgBody(c, idx, lb = 5) {
 }
 
 function fvgStat(c, fi, type, gH, gL, ce) {
+  // Classify by deepest penetration across ALL later candles (not just the first
+  // touch), so a gap tapped then fully mitigated later reads as MITIGATED.
+  let touched = false;
   for (let i = fi + 1; i < c.length; i++) {
-    if (type === 'bull') { if (c[i].low  <= gH) return c[i].low  <= ce ? 'MITIGATED' : 'TAPPED'; }
-    else                 { if (c[i].high >= gL) return c[i].high >= ce ? 'MITIGATED' : 'TAPPED'; }
+    if (type === 'bull') {
+      if (c[i].low  <= gH) { touched = true; if (c[i].low  <= ce) return 'MITIGATED'; }
+    } else {
+      if (c[i].high >= gL) { touched = true; if (c[i].high >= ce) return 'MITIGATED'; }
+    }
   }
-  return 'FRESH';
+  return touched ? 'TAPPED' : 'FRESH';
 }
 
 function hasSweep(c, fi, type, pv) {
@@ -182,16 +198,22 @@ function calcTPs(fvg, entry, sl, allFVGs, liq, pv4h) {
   return orderTPs(entry, sl, lng, candidates);
 }
 
-function buildSetups(fvgs, b4h, cp, liq, pv4h) {
+function buildSetups(fvgs, b4h, cp, liq, pvByTf) {
   if (b4h === 'NEUTRAL') return [];
   const setups = [];
   for (const fvg of fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED')) {
     const lng = fvg.type === 'bull';
     if (lng  && (fvg.gH < cp * 0.82 || fvg.gL > cp)) continue;
     if (!lng && (fvg.gL > cp * 1.18 || fvg.gH < cp)) continue;
-    const entry = fvg.ce, sl = calcSL(fvg, pv4h, cp);
+    const entry = fvg.ce;
+    // Entry must be on the correct side of price: longs at/below (discount), shorts at/above (premium).
+    if (lng  && entry > cp * 1.001) continue;
+    if (!lng && entry < cp * 0.999) continue;
+    // SL from the FVG's OWN timeframe structure, not always 4H.
+    const pv = pvByTf[fvg.tf] || pvByTf['4H'];
+    const sl = calcSL(fvg, pv, cp);
     if (Math.abs(entry - sl) / entry > 0.06) continue;
-    const tps = calcTPs(fvg, entry, sl, fvgs, liq, pv4h);
+    const tps = calcTPs(fvg, entry, sl, fvgs, liq, pvByTf['4H']);
     if (tps[0].rr < 1.5) continue;
     setups.push({ fvg, entry, sl, tps, lng });
   }
@@ -219,6 +241,9 @@ function buildSetupsScalp(fvgs, b1h, cp, liq) {
     if (lng  && (fvg.gH < cp * 0.99 || fvg.gL > cp * 1.003)) continue;
     if (!lng && (fvg.gL > cp * 1.01 || fvg.gH < cp * 0.997)) continue;
     const entry = fvg.ce, sl = calcSLScalp(fvg);
+    // Entry must be on the correct side of price: longs at/below, shorts at/above.
+    if (lng  && entry > cp * 1.001) continue;
+    if (!lng && entry < cp * 0.999) continue;
     if (Math.abs(entry - sl) / entry > 0.005) continue;
     const tps = calcTPsScalp(fvg, entry, sl, fvgs, liq);
     if (tps[0].rr < 1.5) continue;
@@ -259,7 +284,7 @@ async function computeAlgo(sym) {
   const liq = liqLevels(pv4h, cp);
   const fvgs = [...detectFVGs(d4h,'4H',pv4h).slice(-3), ...detectFVGs(d1h,'1H',pv1h).slice(-5), ...detectFVGs(d15m,'15M',pv15m).slice(-3)];
   fvgs.forEach(v => { v.grade = grade(v, b4h, eq4h); });
-  const setups = buildSetups(fvgs, b4h, cp, liq, pv4h);
+  const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m});
   return { mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, setups, ts };
 }
 
