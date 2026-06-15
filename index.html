@@ -1958,21 +1958,27 @@ APPROVED - Strong 1H FVG, aligned with bullish bias, good confluence
 REJECTED - SL too tight for liquidity, entry already broken`;
 
   try {
-    // Call Firebase Cloud Function (API key stays on backend, no CORS issues)
-    if (!_db) {
-      logTg('Firebase not initialized for Claude verification', 'err');
+    // Call Vercel API (backend proxy - API key stays server-side, no CORS)
+    const response = await fetch('/api/verifyTrade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      logTg(`Claude verification error: ${error.error}`, 'err');
       return null;
     }
 
-    const verifyFn = firebase.functions().httpsCallable('verifyTradeWithClaude');
-    const result = await verifyFn({ prompt });
+    const data = await response.json();
 
-    if (!result.data.success) {
-      logTg(`Claude verification error: ${result.data.error}`, 'err');
+    if (!data.success) {
+      logTg(`Claude verification error: ${data.error}`, 'err');
       return null;
     }
 
-    const text = result.data.result;
+    const text = data.result;
     const approved = text.toUpperCase().startsWith('APPROVED');
     const lines = text.split('\n');
     const reason = lines.length > 1 ? lines.slice(1).join(' ').trim() : '';
