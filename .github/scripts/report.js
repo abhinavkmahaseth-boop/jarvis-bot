@@ -305,6 +305,32 @@ function buildSetupsScalp(fvgs, b1h, cp, liq) {
   return dedupeSetups(setups).slice(0, 3);
 }
 
+// Lower-timeframe entry trigger — PENDING / AWAITING / CONFIRMED. Keep IN SYNC.
+function entryTrigger(cc, lng, zL, zH) {
+  if (!cc || cc.length < 3) return 'AWAITING';
+  const n = cc.length, look = Math.min(n, 14);
+  let tapIdx = -1;
+  for (let i = n - look; i < n; i++) {
+    if (lng) { if (cc[i].low  <= zH && cc[i].low  >= zL * 0.999) tapIdx = i; }
+    else     { if (cc[i].high >= zL && cc[i].high <= zH * 1.001) tapIdx = i; }
+  }
+  if (tapIdx < 0) return 'PENDING';
+  const after = cc.slice(tapIdx);
+  if (lng) {
+    const tapHigh = Math.max(...cc.slice(Math.max(0, tapIdx - 1), tapIdx + 1).map(x => x.high));
+    return after.some(x => x.close > tapHigh) ? 'CONFIRMED' : 'AWAITING';
+  } else {
+    const tapLow = Math.min(...cc.slice(Math.max(0, tapIdx - 1), tapIdx + 1).map(x => x.low));
+    return after.some(x => x.close < tapLow) ? 'CONFIRMED' : 'AWAITING';
+  }
+}
+function trigLabel(t) {
+  return t === 'CONFIRMED' ? '✅ Entry confirmed (LTF shift)'
+       : t === 'AWAITING'  ? '⏳ At zone — awaiting LTF confirmation'
+       : t === 'PENDING'   ? '🕒 Pending — price not at zone yet'
+       : '—';
+}
+
 // ── Compute ───────────────────────────────────────────────────────────────────
 async function computeAlgo(sym) {
   const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
@@ -323,22 +349,26 @@ async function computeAlgo(sym) {
     const eqByTfS = {'15M':eq15m, '5M':eq5m};
     fvgs.forEach(v => { v.grade = grade(v, b1h, eqByTfS[v.tf] ?? eq1h); });
     const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
+    const confS = {'15M':d5m, '5M':d5m};
+    setups.forEach(s => { s.trigger = entryTrigger(confS[s.fvg.tf] || d5m, s.lng, s.fvg.gL, s.fvg.gH); });
     return { mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, ch4h:ch1h, ch1h:ch15m, liq, setups, ts };
   }
 
-  const [d4h, d1h, d15m] = await Promise.all([
-    fetchOHLCV(sym, '4h', CNT), fetchOHLCV(sym, '1h', CNT), fetchOHLCV(sym, '15m', CNT),
+  const [d4h, d1h, d15m, d5m] = await Promise.all([
+    fetchOHLCV(sym, '4h', CNT), fetchOHLCV(sym, '1h', CNT), fetchOHLCV(sym, '15m', CNT), fetchOHLCV(sym, '5m', CNT),
   ]);
   const cp = d1h[d1h.length-1].close;
   const pv4h = pivots(d4h, LB), pv1h = pivots(d1h, LB), pv15m = pivots(d15m, Math.max(3, LB-2));
   const b4h = bias(pv4h), b1h = bias(pv1h), b15m = bias(pv15m);
-  const eq4h = eqLevel(pv4h), eq1h = eqLevel(pv1h);
+  const eq4h = eqLevel(pv4h), eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m);
   const ch4h = choch(pv4h, b4h), ch1h = choch(pv1h, b1h);
   const liq = liqLevels(pv4h, cp);
   const fvgs = [...detectFVGs(d4h,'4H',pv4h).slice(-3), ...detectFVGs(d1h,'1H',pv1h).slice(-5), ...detectFVGs(d15m,'15M',pv15m).slice(-3)];
   const eqByTf = {'4H':eq4h, '1H':eq1h, '15M':eq15m};
   fvgs.forEach(v => { v.grade = grade(v, b4h, eqByTf[v.tf] ?? eq4h); });
   const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m});
+  const conf = {'4H':d15m, '1H':d15m, '15M':d5m};
+  setups.forEach(s => { s.trigger = entryTrigger(conf[s.fvg.tf] || d15m, s.lng, s.fvg.gL, s.fvg.gH); });
   return { mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, setups, ts };
 }
 
@@ -379,6 +409,7 @@ function formatTelegram(data, verifiedSetups) {
       msg += `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`;
       msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
       msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
+      if (setup.trigger) msg += `${trigLabel(setup.trigger)}\n`;
       if (verification?.reason) msg += `✅ <i>${verification.reason}</i>\n`;
     });
   }
@@ -405,6 +436,7 @@ FVG: ${fvg.type === 'bull' ? 'bullish/demand' : 'bearish/supply'} on ${fvg.tf}, 
 Entry ${entry.toFixed(2)} (FVG center) | SL ${sl.toFixed(2)} (${slPct}% risk) | R:R to TP1 1:${rr}
 TP1 ${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) · TP2 ${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) · TP3 ${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)})
 Time: ${timeCtx} | Aligned with shorter-TF bias: ${aligned ? 'yes' : 'no'}
+Lower-TF entry trigger: ${setup.trigger === 'CONFIRMED' ? 'CONFIRMED (price tapped the zone and displaced in-direction)' : setup.trigger === 'AWAITING' ? 'AWAITING (price at the zone, no reversal confirmed yet)' : setup.trigger === 'PENDING' ? 'PENDING (price has not reached the zone yet)' : 'n/a'}
 
 Check: R:R acceptable (>1.5)? setup logic sound? entry reachable from price? SL reasonable? market/time supportive?
 Respond with exactly one line: "APPROVED - <short reason>" or "REJECTED - <short reason>".`;

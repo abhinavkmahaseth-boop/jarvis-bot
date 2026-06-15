@@ -1219,10 +1219,8 @@ function renderAlgoScalp(sym, data) {
         <div class="tp-row" style="color:var(--accent)">TP2 <b>${F(tps[1].p)}</b> &nbsp;${RR(tps[1].rr)}&nbsp; <span class="tp-lbl">${tps[1].lbl}</span></div>
         <div class="tp-row" style="color:var(--purple)">TP3 <b>${F(tps[2].p)}</b> &nbsp;${RR(tps[2].rr)}&nbsp; <span class="tp-lbl">${tps[2].lbl}</span></div>
         <div class="s-conds">
-          <span class="cond">✓ 15M FVG tap ${F(fvg.gL)}–${F(fvg.gH)}</span>
-          <span class="cond">✓ 5M rejection candle</span>
-          <span class="cond">✓ 5M displacement</span>
-          <span class="cond">✓ 5M CHoCH/BOS</span>
+          <span class="cond">${trigLabel(s.trigger)}</span>
+          <span class="cond" style="opacity:.6">confirm TF: 5M</span>
         </div>
         <div class="s-mgmt">
           40% at TP1 → SL to BE immediately &nbsp;·&nbsp; 40% at TP2 → trail to TP1 &nbsp;·&nbsp;
@@ -1299,10 +1297,8 @@ function renderAlgo(sym, data) {
         <div class="tp-row" style="color:var(--accent)">TP2 <b>${F(tps[1].p)}</b> &nbsp;${RR(tps[1].rr)}&nbsp; <span class="tp-lbl">${tps[1].lbl}</span></div>
         <div class="tp-row" style="color:var(--purple)">TP3 <b>${F(tps[2].p)}</b> &nbsp;${RR(tps[2].rr)}&nbsp; <span class="tp-lbl">${tps[2].lbl}</span></div>
         <div class="s-conds">
-          <span class="cond">✓ FVG tap ${F(fvg.gL)}–${F(fvg.gH)}</span>
-          <span class="cond">✓ 15M rejection candle</span>
-          <span class="cond">✓ 15M displacement</span>
-          <span class="cond">✓ 15M CHoCH/BOS</span>
+          <span class="cond">${trigLabel(s.trigger)}</span>
+          <span class="cond" style="opacity:.6">confirm TF: ${fvg.tf === '15M' ? '5M' : '15M'}</span>
         </div>
         <div class="s-mgmt">
           30–40% at TP1 → SL to BE &nbsp;·&nbsp; 30% at TP2 → trail to TP1 &nbsp;·&nbsp;
@@ -1317,6 +1313,36 @@ function renderAlgo(sym, data) {
     });
   }
   return h + '</div>';
+}
+
+// Lower-timeframe entry trigger. Given the confirmation-TF candles and the FVG
+// zone, returns:
+//   PENDING   — price hasn't reached the zone yet (armed, wait for the tap)
+//   AWAITING  — price tapped the zone but hasn't shifted in the trade direction
+//   CONFIRMED — price tapped AND displaced back in the trade direction (entry trigger)
+function entryTrigger(cc, lng, zL, zH) {
+  if (!cc || cc.length < 3) return 'AWAITING';
+  const n = cc.length, look = Math.min(n, 14);
+  let tapIdx = -1;
+  for (let i = n - look; i < n; i++) {
+    if (lng) { if (cc[i].low  <= zH && cc[i].low  >= zL * 0.999) tapIdx = i; }
+    else     { if (cc[i].high >= zL && cc[i].high <= zH * 1.001) tapIdx = i; }
+  }
+  if (tapIdx < 0) return 'PENDING';
+  const after = cc.slice(tapIdx);
+  if (lng) {
+    const tapHigh = Math.max(...cc.slice(Math.max(0, tapIdx - 1), tapIdx + 1).map(x => x.high));
+    return after.some(x => x.close > tapHigh) ? 'CONFIRMED' : 'AWAITING';
+  } else {
+    const tapLow = Math.min(...cc.slice(Math.max(0, tapIdx - 1), tapIdx + 1).map(x => x.low));
+    return after.some(x => x.close < tapLow) ? 'CONFIRMED' : 'AWAITING';
+  }
+}
+function trigLabel(t) {
+  return t === 'CONFIRMED' ? '✅ Entry confirmed (LTF shift)'
+       : t === 'AWAITING'  ? '⏳ At zone — awaiting LTF confirmation'
+       : t === 'PENDING'   ? '🕒 Pending — price not at zone yet'
+       : '—';
 }
 
 // ── Run Algo ─────────────────────────────────────────────────────────────────
@@ -1337,10 +1363,12 @@ async function computeAlgo(sym) {
     const eqByTfS = {'15M':eq15m, '5M':eq5m};
     fvgs.forEach(v => { v.grade = grade(v, b1h, eqByTfS[v.tf] ?? eq1h); });
     const setups = buildSetupsScalp(fvgs, b1h, cp, liq);
+    const confS = {'15M':d5m, '5M':d5m};
+    setups.forEach(s => { s.trigger = entryTrigger(confS[s.fvg.tf] || d5m, s.lng, s.fvg.gL, s.fvg.gH); });
     return {mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, eq15m:eq5m, ch4h:ch1h, ch1h:ch15m, ch15m:ch5m, liq, setups, ts};
   }
 
-  const [d4h, d1h, d15m] = await Promise.all(TFS.slice(0,3).map(tf => fetchOHLCV(sym,tf.res,cnt)));
+  const [d4h, d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'4h',cnt), fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
   const cp = d1h[d1h.length-1].close;
   const pv4h = pivots(d4h,lb), pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2));
   const b4h = bias(pv4h), b1h = bias(pv1h), b15m = bias(pv15m);
@@ -1351,6 +1379,8 @@ async function computeAlgo(sym) {
   const eqByTf = {'4H':eq4h, '1H':eq1h, '15M':eq15m};
   fvgs.forEach(v => { v.grade = grade(v, b4h, eqByTf[v.tf] ?? eq4h); });
   const setups = buildSetups(fvgs, b4h, cp, liq, {'4H':pv4h, '1H':pv1h, '15M':pv15m});
+  const conf = {'4H':d15m, '1H':d15m, '15M':d5m};
+  setups.forEach(s => { s.trigger = entryTrigger(conf[s.fvg.tf] || d15m, s.lng, s.fvg.gL, s.fvg.gH); });
   return {mode:'swing', sym, cp, b4h, b1h, b15m, eq4h, eq1h, eq15m, ch4h, ch1h, ch15m, liq, setups, ts};
 }
 
@@ -2047,6 +2077,7 @@ async function verifyTradeWithClaude(sym, setup, currentPrice, bias4h, bias1h) {
 **Market Context:**
 - Time: ${timeContext}
 - Setup aligns with market bias: ${(lng && bias1h === 'BULLISH') || (!lng && bias1h === 'BEARISH') ? 'YES ✓' : 'NEEDS CAUTION'}
+- Lower-TF entry trigger: ${setup.trigger === 'CONFIRMED' ? 'CONFIRMED — price tapped the zone and displaced in-direction' : setup.trigger === 'AWAITING' ? 'AWAITING — price is at the zone but has not yet confirmed a reversal' : setup.trigger === 'PENDING' ? 'PENDING — price has not reached the zone yet (limit/anticipatory entry)' : 'n/a'}
 
 **Evaluation Criteria:**
 1. Is the R:R acceptable (>1.5)?
@@ -2220,6 +2251,7 @@ function formatAlgoForTelegramWithVerification(sym, data, verifiedSetups) {
       msg += `🎯 TP1: ${F(tps[0].p)}  ${RR(tps[0].rr)}\n`;
       msg += `🎯 TP2: ${F(tps[1].p)}  ${RR(tps[1].rr)}\n`;
       msg += `🎯 TP3: ${F(tps[2].p)}  ${RR(tps[2].rr)}\n`;
+      if (setup.trigger) msg += `${trigLabel(setup.trigger)}\n`;
       if (verification) {
         msg += `✅ <i>${verification.reason}</i>\n`;
       }
