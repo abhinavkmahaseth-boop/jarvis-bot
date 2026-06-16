@@ -21,32 +21,10 @@
       "trigger": "CONFIRMED",
       "claude": "auto · no Claude",
       "createdAt": 1781589335157
-    },
-    {
-      "id": "1781589335157-geh8q",
-      "sym": "BTCUSD",
-      "dir": "LONG",
-      "lng": true,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 65596.5,
-      "zoneHigh": 65669.5,
-      "entry": 65633,
-      "sl": 65530.4715,
-      "tp1": 65908,
-      "tp2": 65990.25,
-      "tp3": 66197,
-      "rr1": 2.6821810520977003,
-      "rr2": 3.4843970213160125,
-      "rr3": 5.500909503211283,
-      "invalidation": 65474.5,
-      "trigger": "PENDING",
-      "claude": "auto · no Claude",
-      "createdAt": 1781589335157
     }
   ],
   "open": [],
   "closed": [],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T06:01:14.059Z"
+  "updatedAt": "2026-06-16T06:05:35.196Z"
 }
