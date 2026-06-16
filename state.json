@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1781595060015-rhpiy",
       "sym": "BTCUSD",
@@ -20,11 +21,15 @@
       "invalidation": 65474.5,
       "trigger": "CONFIRMED",
       "claude": "Bullish bias aligned across 1H/15M, fresh B-grade FVG with confirmed lower-TF entry trigger, excellent R:R (1:3.86+), tight SL (0.12%), entry reachable via minor pullback, Asian session supportive, clear invalidation level at 65474.50.",
-      "createdAt": 1781595060015
+      "createdAt": 1781595060015,
+      "enteredAt": 1781615449858,
+      "stage": 0,
+      "stop": 66177.1925,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T13:05:36.792Z"
+  "updatedAt": "2026-06-16T13:10:51.089Z"
 }
