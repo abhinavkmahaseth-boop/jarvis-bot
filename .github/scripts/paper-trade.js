@@ -25,15 +25,26 @@ const STALE_MS   = 6 * 3600 * 1000;             // cancel un-filled setups after
 const COOLDOWN_MS= 2 * 3600 * 1000;             // don't re-enter the same zone for 2h
 const ZONE_TOL   = 0.0015;                       // 0.15% = "same zone"
 const STATE_FILE = process.env.STATE_FILE || path.join(process.cwd(), 'state.json');
+// Second, independent book: same engine + exit model, but NO Claude gate and
+// Grade-A only — the live forward-test of the 60-day backtest. Separate state file.
+const ALGO_STATE_FILE = process.env.ALGO_STATE_FILE || STATE_FILE.replace(/state\.json$/, 'state-algo.json');
+
+// Two books run off the SAME 5-min scan / same candles:
+//   claude → Claude-gated, grades A+B, full Telegram flow (actionable alerts)
+//   algo   → no Claude, Grade-A only, close-only Telegram (passive forward-test)
+const BOOKS = {
+  claude: { file: STATE_FILE,      label: 'CLAUDE', claude: true,  grade: null, tag: '',         pings: 'full' },
+  algo:   { file: ALGO_STATE_FILE, label: 'AUTO',   claude: false, grade: 'A',  tag: ' 🤖 AUTO', pings: 'closeonly' },
+};
 
 const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const now = () => Date.now();
 
-function loadState() {
-  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+function loadState(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { return { pending: [], open: [], closed: [], startEquity: ACCOUNT }; }
 }
-function saveState(s) { s.updatedAt = new Date().toISOString(); fs.writeFileSync(STATE_FILE, JSON.stringify(s, null, 2)); }
+function saveState(s, file) { s.updatedAt = new Date().toISOString(); fs.writeFileSync(file, JSON.stringify(s, null, 2)); }
 
 async function tg(text) {
   if (!TG_TOKEN || !TG_CHAT) { console.log('[tg skipped]', text.replace(/<[^>]+>/g, '')); return; }
@@ -99,22 +110,14 @@ function finishTrade(t, c, reason) {
   return t;
 }
 
-// ── Monitor ───────────────────────────────────────────────────────────────────
-async function monitor() {
-  const state = loadState();
-  // Fetch each timeframe ONCE, then analyze the same candles we manage trades on
-  // (avoids a second 5m round-trip and any snapshot skew between the two).
-  const [d1h, d15m, d5m] = await Promise.all([
-    ENGINE.fetchOHLCV(SYM, '1h', 150),
-    ENGINE.fetchOHLCV(SYM, '15m', 150),
-    ENGINE.fetchOHLCV(SYM, '5m', 150),
-  ]);
-  const data = ENGINE.analyze(SYM, { d1h, d15m, d5m }, { lb: 5, mode: ALGO_MODE });
-  const cp = data.cp;
-  const c5 = d5m;
-  console.log(`monitor ${SYM} cp=${cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
+// ── Per-book scan ─────────────────────────────────────────────────────────────
+// One book = one independent state file. cfg decides the Claude gate, grade
+// filter and how chatty Telegram is. Both books run off the SAME data/candles.
+async function runBook(cfg, data, c5) {
+  const state = loadState(cfg.file);
+  console.log(`[${cfg.label}] cp=${data.cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
 
-  // 1) Manage open trades
+  // 1) Manage open trades — CLOSED pings on both books
   for (const t of [...state.open]) {
     const done = manageTrade(t, c5);
     if (done) {
@@ -122,7 +125,7 @@ async function monitor() {
       state.closed.push(done);
       const emoji = done.totalR > 0 ? '✅' : done.totalR < 0 ? '❌' : '➖';
       await tg(
-        `🏁 <b>CLOSED — BTC ${done.dir}</b> ${emoji}\n` +
+        `🏁 <b>CLOSED — BTC ${done.dir}</b>${cfg.tag} ${emoji}\n` +
         `Exit: ${done.exitReason}  ·  <b>${done.totalR > 0 ? '+' : ''}${done.totalR}R</b>  ·  ${done.pnl >= 0 ? '+' : ''}$${F(done.pnl)}\n` +
         `Account: <b>$${F(equityOf(state))}</b>  ·  ${state.closed.length} trades · ${winRateOf(state)}% win`
       );
@@ -137,57 +140,81 @@ async function monitor() {
     const tapped = bars.some(c => p.lng ? c.low <= p.entry : c.high >= p.entry);
     if (tapped) {
       state.pending = state.pending.filter(x => x.id !== p.id);
-      const t = { ...p, enteredAt: now(), stage: 0, stop: p.sl, realizedR: 0, remaining: 1 };
-      state.open.push(t);
-      const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
-      await tg(
-        `🟢 <b>ENTRY — BTC ${p.dir}</b> (paper)\n` +
-        `Filled <b>${F(p.entry)}</b>  ·  SL ${F(p.sl)} (${slPct}%)  ·  risk $${F(R_DOLLAR)} (2%)\n` +
-        `TP1 ${F(p.tp1)} → book 50%, SL→BE · runner trails to TP3 ${F(p.tp3)}`
-      );
+      state.open.push({ ...p, enteredAt: now(), stage: 0, stop: p.sl, realizedR: 0, remaining: 1 });
+      if (cfg.pings === 'full') {
+        const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
+        await tg(
+          `🟢 <b>ENTRY — BTC ${p.dir}</b> (paper)\n` +
+          `Filled <b>${F(p.entry)}</b>  ·  SL ${F(p.sl)} (${slPct}%)  ·  risk $${F(R_DOLLAR)} (2%)\n` +
+          `TP1 ${F(p.tp1)} → book 50%, SL→BE · runner trails to TP3 ${F(p.tp3)}`
+        );
+      }
     } else if (voided || stale) {
       state.pending = state.pending.filter(x => x.id !== p.id);
-      await tg(`🚫 <b>SETUP CANCELLED — BTC ${p.dir}</b>\n${voided ? 'Structure void (CHoCH broken)' : 'Expired (6h, no entry)'} · entry ${F(p.entry)}`);
+      if (cfg.pings === 'full')
+        await tg(`🚫 <b>SETUP CANCELLED — BTC ${p.dir}</b>\n${voided ? 'Structure void (CHoCH broken)' : 'Expired (6h, no entry)'} · entry ${F(p.entry)}`);
     }
   }
 
-  // 3) New Claude-verified setups
+  // 3) New setups — grade-filtered, optionally Claude-gated
   for (const s of (data.setups || [])) {
+    if (cfg.grade && s.fvg.grade !== cfg.grade) continue;
     const dir = s.lng ? 'LONG' : 'SHORT';
     if (isKnown(state, dir, s.entry)) continue;
-    const v = await verifyTrade(SYM, s, data, CLAUDE_KEY);
-    if (!v) { console.log(`  Claude no-result for ${dir} ${s.entry}`); continue; }
-    if (!v.approved) { console.log(`  Claude REJECTED ${dir} ${s.entry}: ${v.reason}`); continue; }
+    let note = 'auto · no Claude';
+    if (cfg.claude) {
+      const v = await verifyTrade(SYM, s, data, CLAUDE_KEY);
+      if (!v) { console.log(`  [${cfg.label}] Claude no-result ${dir} ${s.entry}`); continue; }
+      if (!v.approved) { console.log(`  [${cfg.label}] Claude REJECTED ${dir} ${s.entry}: ${v.reason}`); continue; }
+      note = v.reason;
+    }
     const p = {
       id: `${now()}-${Math.random().toString(36).slice(2, 7)}`,
       sym: SYM, dir, lng: s.lng, grade: s.fvg.grade, tf: s.fvg.tf,
       zoneLow: s.fvg.gL, zoneHigh: s.fvg.gH, entry: s.entry, sl: s.sl,
       tp1: s.tps[0].p, tp2: s.tps[1].p, tp3: s.tps[2].p,
       rr1: s.tps[0].rr, rr2: s.tps[1].rr, rr3: s.tps[2].rr,
-      invalidation: s.invalidation, trigger: s.trigger, claude: v.reason, createdAt: now(),
+      invalidation: s.invalidation, trigger: s.trigger, claude: note, createdAt: now(),
     };
     state.pending.push(p);
-    const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
-    await tg(
-      `🎯 <b>SETUP READY — BTC ${dir}</b> (Claude ✅)\n` +
-      `Grade <b>${p.grade}</b> · ${p.tf} FVG · scalp\n` +
-      `📍 Entry <b>${F(p.entry)}</b>  (zone ${F(p.zoneLow)}–${F(p.zoneHigh)})\n` +
-      `🛑 SL ${F(p.sl)} (${slPct}%)\n` +
-      `🎯 TP1 ${F(p.tp1)} · TP2 ${F(p.tp2)} · TP3 ${F(p.tp3)}\n` +
-      (p.invalidation != null ? `🧱 Void if closes ${p.lng ? 'below' : 'above'} ${F(p.invalidation)}\n` : '') +
-      `🤖 <i>${p.claude}</i>\n<i>Paper · waiting for entry tap…</i>`
-    );
+    if (cfg.pings === 'full') {
+      const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
+      await tg(
+        `🎯 <b>SETUP READY — BTC ${dir}</b> (Claude ✅)\n` +
+        `Grade <b>${p.grade}</b> · ${p.tf} FVG · scalp\n` +
+        `📍 Entry <b>${F(p.entry)}</b>  (zone ${F(p.zoneLow)}–${F(p.zoneHigh)})\n` +
+        `🛑 SL ${F(p.sl)} (${slPct}%)\n` +
+        `🎯 TP1 ${F(p.tp1)} · TP2 ${F(p.tp2)} · TP3 ${F(p.tp3)}\n` +
+        (p.invalidation != null ? `🧱 Void if closes ${p.lng ? 'below' : 'above'} ${F(p.invalidation)}\n` : '') +
+        `🤖 <i>${p.claude}</i>\n<i>Paper · waiting for entry tap…</i>`
+      );
+    }
   }
 
-  saveState(state);
-  console.log('saved.');
+  saveState(state, cfg.file);
+  console.log(`[${cfg.label}] saved → ${path.basename(cfg.file)}`);
 }
 
-// ── Weekly review ───────────────────────────────────────────────────────────────
-async function review() {
-  const state = loadState();
+// ── Monitor: one scan, both books ─────────────────────────────────────────────
+async function monitor() {
+  // Fetch each timeframe ONCE, analyze once, then run both books on the SAME data
+  // (one set of API calls drives both the Claude-gated and the algo-only book).
+  const [d1h, d15m, d5m] = await Promise.all([
+    ENGINE.fetchOHLCV(SYM, '1h', 150),
+    ENGINE.fetchOHLCV(SYM, '15m', 150),
+    ENGINE.fetchOHLCV(SYM, '5m', 150),
+  ]);
+  const data = ENGINE.analyze(SYM, { d1h, d15m, d5m }, { lb: 5, mode: ALGO_MODE });
+  await runBook(BOOKS.claude, data, d5m);
+  await runBook(BOOKS.algo, data, d5m);
+}
+
+// ── Weekly review (per book) ──────────────────────────────────────────────────
+async function reviewBook(cfg) {
+  const state = loadState(cfg.file);
   const cl = state.closed;
-  if (!cl.length) { await tg('📊 <b>WEEKLY PAPER REVIEW — BTC scalp</b>\nNo closed trades yet.'); return; }
+  const title = `📊 <b>WEEKLY REVIEW — BTC scalp${cfg.tag}</b>`;
+  if (!cl.length) { await tg(`${title}\nNo closed trades yet.`); return; }
   const wins = cl.filter(t => t.totalR > 0), losses = cl.filter(t => t.totalR < 0), be = cl.filter(t => t.totalR === 0);
   const totalR = cl.reduce((a, t) => a + t.totalR, 0);
   const grossWin = wins.reduce((a, t) => a + t.totalR, 0), grossLoss = Math.abs(losses.reduce((a, t) => a + t.totalR, 0));
@@ -200,7 +227,7 @@ async function review() {
     return gt.length ? `  ${g}: ${gt.length} · ${Math.round(100 * gt.filter(t => t.totalR > 0).length / gt.length)}% · ${(gt.reduce((a, t) => a + t.totalR, 0)).toFixed(1)}R` : null;
   }).filter(Boolean).join('\n');
   await tg(
-    `📊 <b>WEEKLY PAPER REVIEW — BTC scalp</b>\n` +
+    `${title}\n` +
     `Trades: <b>${cl.length}</b>  (${wins.length}W / ${losses.length}L / ${be.length}BE)\n` +
     `Win rate: <b>${winRateOf(state)}%</b>\n` +
     `Net: <b>${totalR >= 0 ? '+' : ''}${totalR.toFixed(2)}R</b>  ·  ${equity - state.startEquity >= 0 ? '+' : ''}$${F(equity - state.startEquity)}\n` +
@@ -211,6 +238,7 @@ async function review() {
     `Account: $${F(state.startEquity)} → <b>$${F(equity)}</b>`
   );
 }
+async function review() { await reviewBook(BOOKS.claude); await reviewBook(BOOKS.algo); }
 
 if (require.main === module) {
   (async () => {
@@ -221,5 +249,5 @@ if (require.main === module) {
     } catch (e) { console.error('paper-trade error:', e); process.exit(1); }
   })();
 } else {
-  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, R_DOLLAR };
+  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, runBook, reviewBook, R_DOLLAR };
 }

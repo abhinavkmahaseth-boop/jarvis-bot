@@ -351,7 +351,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
     <div class="nav-link" data-page="paper" onclick="nav('paper')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
         <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      Paper Trades
+      Paper · Claude
+    </div>
+    <div class="nav-link" data-page="paper-algo" onclick="nav('paper-algo')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M12 2v4"/><path d="M12 18v4"/><circle cx="12" cy="12" r="4"/><path d="M4.9 4.9l2.1 2.1"/><path d="M17 17l2.1 2.1"/></svg>
+      Paper · Auto
     </div>
     <div class="nav-link" data-page="backtest" onclick="nav('backtest')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -470,12 +475,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
   <!-- Paper Trades -->
   <div class="page" id="page-paper">
     <div class="page-hd">
-      <span class="page-hd-title">Paper Trades — BTC <span style="font-size:11px;color:var(--text3);font-weight:400">· scalp · $1,000 · 2% risk</span></span>
+      <span class="page-hd-title">Paper · Claude — BTC <span style="font-size:11px;color:var(--text3);font-weight:400">· scalp · Claude-gated · $1,000 · 2% risk</span></span>
       <div class="page-hd-actions">
         <button class="btn btn-dl" onclick="renderPaper()">↻ Refresh</button>
       </div>
     </div>
     <div id="paper-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load paper trades…</div></div>
+  </div>
+
+  <!-- Auto paper (algorithmic, no Claude) -->
+  <div class="page" id="page-paper-algo">
+    <div class="page-hd">
+      <span class="page-hd-title">Paper · Auto — BTC <span style="font-size:11px;color:var(--text3);font-weight:400">· scalp · Grade A · no Claude · fully automatic · $1,000 · 2% risk</span></span>
+      <div class="page-hd-actions">
+        <button class="btn btn-dl" onclick="renderPaperAlgo()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="paper-algo-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load auto paper trades…</div></div>
   </div>
 
   <!-- Backtest -->
@@ -734,6 +750,7 @@ function nav(page) {
   history.replaceState(null, '', `#${page}`);
   if (page === 'journal') renderJournal();
   if (page === 'paper') renderPaper();
+  if (page === 'paper-algo') renderPaperAlgo();
   if (page === 'backtest') renderBacktest();
 }
 
@@ -769,16 +786,22 @@ function _card(label, value, color) {
     <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${label}</div>
     <div style="font-size:17px;font-weight:700;margin-top:3px;color:${color || 'var(--text)'}">${value}</div></div>`;
 }
-async function renderPaper() {
-  const el = document.getElementById('paper-body');
+const PAPER_ALGO_URL = 'https://raw.githubusercontent.com/abhinavkmahaseth-boop/jarvis-bot/paper-data/state-algo.json';
+// Both paper books share one renderer; opts.isClaude only flips the pending-table
+// labels (Claude reason vs auto note). url + elId pick which book.
+async function renderPaper()     { return _renderPaperBook(PAPER_STATE_URL, 'paper-body',      { isClaude: true  }); }
+async function renderPaperAlgo()  { return _renderPaperBook(PAPER_ALGO_URL,  'paper-algo-body', { isClaude: false }); }
+async function _renderPaperBook(url, elId, opts) {
+  const isClaude = !!(opts && opts.isClaude);
+  const el = document.getElementById(elId);
   el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3)">Loading paper trades…</div>';
   let s;
   try {
-    const r = await fetch(`${PAPER_STATE_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    const r = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     s = await r.json();
   } catch (e) {
-    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text3)">No paper-trade data yet.<br><span style="font-size:11px">The <b>paper-data</b> branch appears after the first run commits state. (${e.message})</span></div>`;
+    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text3)">No paper-trade data yet.<br><span style="font-size:11px">The <b>paper-data</b> branch appears after the first run commits state. (${esc(e.message)})</span></div>`;
     return;
   }
   const closed = s.closed || [], open = s.open || [], pending = s.pending || [];
@@ -817,9 +840,10 @@ async function renderPaper() {
   const openRows = open.map(t => `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`);
   h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','TP1 / TP2 / TP3','Opened']);
 
-  // PENDING
+  // PENDING (label differs: Claude reason vs auto note)
   const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+esc(p.grade))}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(esc(p.claude||''), 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
-  h += tbl(`🎯 Pending — Claude-approved, awaiting entry (${pending.length})`, pendRows, ['Dir','Grade','Entry','Zone','Claude','Since']);
+  const pendTitle = isClaude ? `🎯 Pending — Claude-approved, awaiting entry (${pending.length})` : `🎯 Pending — awaiting entry tap (${pending.length})`;
+  h += tbl(pendTitle, pendRows, ['Dir','Grade','Entry','Zone', isClaude ? 'Claude' : 'Note', 'Since']);
 
   // CLOSED (most recent first)
   const closedRows = [...closed].reverse().map(t => {

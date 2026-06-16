@@ -40,15 +40,13 @@ jobs:
 
       - name: Load state from paper-data branch
         run: |
-          if git clone --depth 1 --branch paper-data --single-branch \
-               "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd 2>/dev/null \
-             && [ -f /tmp/pd/state.json ]; then
-            cp /tmp/pd/state.json ./state.json
-            echo "loaded existing state"
-          else
-            echo '{"pending":[],"open":[],"closed":[],"startEquity":1000}' > ./state.json
-            echo "initialised empty state"
-          fi
+          git clone --depth 1 --branch paper-data --single-branch \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/pd 2>/dev/null || mkdir -p /tmp/pd
+          # Two independent books: state.json (Claude-gated) + state-algo.json (auto, no Claude)
+          for f in state.json state-algo.json; do
+            if [ -f /tmp/pd/$f ]; then cp /tmp/pd/$f ./$f; echo "loaded $f";
+            else echo '{"pending":[],"open":[],"closed":[],"startEquity":1000}' > ./$f; echo "initialised $f"; fi
+          done
 
       - name: Run paper-trader
         env:
@@ -56,6 +54,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           STATE_FILE: ${{ github.workspace }}/state.json
+          ALGO_STATE_FILE: ${{ github.workspace }}/state-algo.json
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             TASK="${{ github.event.action }}"                # monitor | review
@@ -80,10 +79,11 @@ jobs:
             cd "$GITHUB_WORKSPACE"
           fi
           cp ./state.json /tmp/pd/state.json
+          cp ./state-algo.json /tmp/pd/state-algo.json
           cd /tmp/pd
           git config user.name "jarvis-bot"
           git config user.email "jarvis-bot@users.noreply.github.com"
-          git add state.json
+          git add state.json state-algo.json
           git commit -m "paper state $(date -u +%FT%TZ) [skip ci]" || { echo "no change"; exit 0; }
           # Retry with rebase: a failed push leaves stale state → duplicate pings next
           # run, and backtest.yml writes the same branch, so a non-fast-forward is possible.
