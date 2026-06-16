@@ -102,9 +102,16 @@ function finishTrade(t, c, reason) {
 // ── Monitor ───────────────────────────────────────────────────────────────────
 async function monitor() {
   const state = loadState();
-  const data = await ENGINE.computeAlgo(SYM, { mode: ALGO_MODE });
+  // Fetch each timeframe ONCE, then analyze the same candles we manage trades on
+  // (avoids a second 5m round-trip and any snapshot skew between the two).
+  const [d1h, d15m, d5m] = await Promise.all([
+    ENGINE.fetchOHLCV(SYM, '1h', 150),
+    ENGINE.fetchOHLCV(SYM, '15m', 150),
+    ENGINE.fetchOHLCV(SYM, '5m', 150),
+  ]);
+  const data = ENGINE.analyze(SYM, { d1h, d15m, d5m }, { lb: 5, mode: ALGO_MODE });
   const cp = data.cp;
-  const c5 = await ENGINE.fetchOHLCV(SYM, '5m', 150);
+  const c5 = d5m;
   console.log(`monitor ${SYM} cp=${cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
 
   // 1) Manage open trades

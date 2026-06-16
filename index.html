@@ -704,6 +704,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 </div>
 
 <script src="engine.js"></script>
+<script src="claude.js"></script>
 <script>
 // ── SMC engine (shared with the cron — single source of truth in engine.js) ──
 const {
@@ -722,11 +723,8 @@ const TFS  = [
 ];
 let outputs = {}, activeTab = SYMS[0];
 
-function isMarketOpen(sym) {
-  if (['BTCUSD','SOLUSD','ETHUSD'].includes(sym)) return true;
-  const d = new Date().getUTCDay();
-  return d !== 0 && d !== 6;
-}
+// All tracked symbols are crypto perps — they trade 24/7/365.
+function isMarketOpen(sym) { return true; }
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function nav(page) {
@@ -741,6 +739,11 @@ function nav(page) {
 
 // ── Paper Trades viewer (reads state.json from the paper-data branch) ──────────
 const PAPER_STATE_URL = 'https://raw.githubusercontent.com/abhinavkmahaseth-boop/jarvis-bot/paper-data/state.json';
+// Escape anything that lands in innerHTML from remote JSON (state/backtest on the
+// paper-data branch) — esp. Claude's free-text reason — so a stray < can't inject.
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
 function _pDate(ms) {
   if (!ms) return '—';
   return new Date(ms).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
@@ -808,20 +811,20 @@ async function renderPaper() {
        <tbody>${rows.join('')}</tbody></table></div></div>`
     : `<div style="margin-bottom:1.3rem"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.4rem">${title}</div><div style="color:var(--text3);font-size:12px">None.</div></div>`;
   const td = (v, c) => `<td style="padding:.35rem .5rem;border-bottom:1px solid var(--border)${c?';color:'+c:''}">${v}</td>`;
-  const dirBadge = d => `<b style="color:${d==='LONG'?'var(--green)':'var(--red)'}">${d}</b>`;
+  const dirBadge = d => `<b style="color:${d==='LONG'?'var(--green)':'var(--red)'}">${esc(d)}</b>`;
 
   // OPEN
-  const openRows = open.map(t => `<tr>${td(dirBadge(t.dir))}${td('G'+t.grade)}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+(t.stage??0))}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`);
+  const openRows = open.map(t => `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`);
   h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','TP1 / TP2 / TP3','Opened']);
 
   // PENDING
-  const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+p.grade)}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(p.claude||'', 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
+  const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+esc(p.grade))}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(esc(p.claude||''), 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
   h += tbl(`🎯 Pending — Claude-approved, awaiting entry (${pending.length})`, pendRows, ['Dir','Grade','Entry','Zone','Claude','Since']);
 
   // CLOSED (most recent first)
   const closedRows = [...closed].reverse().map(t => {
     const c = pos(t.totalR);
-    return `<tr>${td(dirBadge(t.dir))}${td('G'+t.grade)}${td(F(t.entry))}${td(t.exitReason)}${td((t.totalR>=0?'+':'')+t.totalR+'R', c)}${td((t.pnl>=0?'+':'')+'$'+F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
+    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(esc(t.exitReason))}${td((t.totalR>=0?'+':'')+t.totalR+'R', c)}${td((t.pnl>=0?'+':'')+'$'+F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
   });
   h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit','R','P&L','Closed']);
 
@@ -869,10 +872,10 @@ async function renderBacktest() {
     ${_equitySvg(st.startEquity || 1000, b.closed || [])}
   </div>`;
   const td = (v, c) => `<td style="padding:.3rem .5rem;border-bottom:1px solid var(--border)${c ? ';color:' + c : ''}">${v}</td>`;
-  const dirBadge = d => `<b style="color:${d === 'LONG' ? 'var(--green)' : 'var(--red)'}">${d}</b>`;
+  const dirBadge = d => `<b style="color:${d === 'LONG' ? 'var(--green)' : 'var(--red)'}">${esc(d)}</b>`;
   const rows = [...(b.closed || [])].reverse().map(t => {
     const c = pos(t.totalR);
-    return `<tr>${td(dirBadge(t.dir))}${td(t.tf)}${td(F(t.entry))}${td(t.exitReason)}${td((t.totalR >= 0 ? '+' : '') + t.totalR + 'R', c)}${td((t.pnl >= 0 ? '+' : '') + '$' + F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
+    return `<tr>${td(dirBadge(t.dir))}${td(esc(t.tf))}${td(F(t.entry))}${td(esc(t.exitReason))}${td((t.totalR >= 0 ? '+' : '') + t.totalR + 'R', c)}${td((t.pnl >= 0 ? '+' : '') + '$' + F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
   });
   h += `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">All ${b.closed?.length || 0} trades (newest first)</div>
     <div style="max-height:420px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1868,69 +1871,16 @@ function loadClaudeSettingsUI() {
   }
 }
 
-async function verifyTradeWithClaude(sym, setup, currentPrice, bias4h, bias1h) {
+// Thin browser wrapper over the shared verifier (claude.js). The PROMPT and the
+// verdict parsing live in JARVIS_CLAUDE so the browser asks Claude the exact same
+// question as the cron/paper-trader; only the transport differs here (the browser
+// needs the CORS header + the on-screen log). `data` is the analyze() output
+// (or a synthetic {cp,b4h,b1h,mode} for the connection test).
+async function verifyTradeWithClaude(sym, setup, data) {
   const apiKey = getClaudeApiKey();
   if (!apiKey) return null;
-
-  const { fvg, entry, sl, tps, lng } = setup;
-  const direction = lng ? 'LONG' : 'SHORT';
-  const risk = Math.abs(entry - sl);
-  const reward = Math.abs(tps[0].p - entry);
-  const rr = (reward / risk).toFixed(2);
-  const slPct = ((risk / entry) * 100).toFixed(2);
-
-  const now = new Date();
-  const hour = now.getUTCHours();
-  const timeContext = hour >= 0 && hour < 8 ? 'Asian session' : hour >= 8 && hour < 16 ? 'European/US session' : 'overnight/low liquidity';
-
-  const prompt = `You are a professional crypto trader reviewing a trade setup. Analyze this trade for validity and risk management.
-
-**Trade Details:**
-- Symbol: ${sym}.P (perpetual futures on Delta Exchange India)
-- Direction: ${direction}
-- Current Price: $${currentPrice.toLocaleString('en-IN', {maximumFractionDigits:2})}
-- Market Bias (4H): ${bias4h}, (1H): ${bias1h}
-
-**Setup Structure:**
-- FVG Type: ${fvg.type === 'bull' ? 'BULLISH (demand)' : 'BEARISH (supply)'} on ${fvg.tf}
-- FVG Level: $${fvg.gL.toFixed(2)} – $${fvg.gH.toFixed(2)} (center: $${fvg.ce.toFixed(2)})
-- FVG Status: ${fvg.status} ${fvg.swept ? '(swept)' : ''}
-- Grade: ${fvg.grade}
-
-**Entry & Risk:**
-- Entry: $${entry.toFixed(2)} (FVG center)
-- Stop Loss: $${sl.toFixed(2)}
-- Risk: $${risk.toFixed(2)} (${slPct}% from entry)
-- Risk/Reward: 1:${rr}
-
-**Targets:**
-- TP1: $${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) — ${tps[0].lbl}
-- TP2: $${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) — ${tps[1].lbl}
-- TP3: $${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)}) — ${tps[2].lbl}
-
-**Market Context:**
-- Time: ${timeContext}
-- Setup aligns with market bias: ${(lng && bias1h === 'BULLISH') || (!lng && bias1h === 'BEARISH') ? 'YES ✓' : 'NEEDS CAUTION'}
-- Lower-TF entry trigger: ${setup.trigger === 'CONFIRMED' ? 'CONFIRMED — price tapped the zone and displaced in-direction' : setup.trigger === 'AWAITING' ? 'AWAITING — price is at the zone but has not yet confirmed a reversal' : setup.trigger === 'PENDING' ? 'PENDING — price has not reached the zone yet (limit/anticipatory entry)' : 'n/a'}
-- Structural invalidation (CHoCH): idea is void if price closes ${lng ? 'below' : 'above'} ${setup.invalidation != null ? '$' + setup.invalidation.toFixed(2) : 'n/a'} — i.e. that's the level where the trend's character changes against this trade
-
-**Evaluation Criteria:**
-1. Is the R:R acceptable (>1.5)?
-2. Does the setup logic make sense? (FVG tap, valid sweep, confluence?)
-3. Is entry zone reachable from current price?
-4. Is SL reasonable (<1% risk)?
-5. Does market condition (time/bias) support this trade?
-
-Respond ONLY with:
-APPROVED or REJECTED
-
-Then a 1-line reason max. Example:
-APPROVED - Strong 1H FVG, aligned with bullish bias, good confluence
-REJECTED - SL too tight for liquidity, entry already broken`;
-
   try {
-    // Call Claude API directly from the browser (CORS enabled via the official
-    // anthropic-dangerous-direct-browser-access header). No backend proxy needed.
+    const prompt = JARVIS_CLAUDE.buildVerifyPrompt(sym, setup, data);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1945,7 +1895,6 @@ REJECTED - SL too tight for liquidity, entry already broken`;
         messages: [{ role: 'user', content: prompt }]
       })
     });
-
     if (!response.ok) {
       let msg = `HTTP ${response.status}`;
       try { const e = await response.json(); msg = e.error?.message || msg; } catch (_) {}
@@ -1953,25 +1902,14 @@ REJECTED - SL too tight for liquidity, entry already broken`;
       logTg(`Claude verification error: ${msg}`, 'err');
       return null;
     }
-
-    const data = await response.json();
-    const text = (data.content?.[0]?.text || '').trim();
-
+    const json = await response.json();
+    const text = (json.content?.[0]?.text || '').trim();
     if (!text) {
       window._claudeErr = 'empty response';
       logTg('Claude verification error: empty response', 'err');
       return null;
     }
-
-    const approved = text.toUpperCase().startsWith('APPROVED');
-    const lines = text.split('\n');
-    const reason = lines.length > 1 ? lines.slice(1).join(' ').trim() : '';
-
-    return {
-      approved,
-      reason: reason || (approved ? 'Trade passed verification' : 'Trade rejected by AI review'),
-      fullResponse: text
-    };
+    return JARVIS_CLAUDE.parseVerdict(text);
   } catch (e) {
     window._claudeErr = e.message;
     logTg(`Claude verification error: ${e.message}`, 'err');
@@ -1991,7 +1929,7 @@ async function sendSetupAlertWithVerification(sym, idx) {
 
   let verification = null;
   if (getClaudeApiKey()) {
-    verification = await verifyTradeWithClaude(sym, s, data.cp, data.b4h || data.b1h, data.b1h || data.b15m);
+    verification = await verifyTradeWithClaude(sym, s, data);
     if (!verification?.approved) {
       alert(`❌ Trade rejected by Claude AI: ${verification?.reason || 'Failed verification'}`);
       logTg(`Setup ${idx+1} for ${sym} rejected by Claude`, 'warn');
@@ -2021,7 +1959,7 @@ async function buildVerifiedSetups(sym, data) {
   }
   const out = [];
   for (let i = 0; i < data.setups.length; i++) {
-    const v = await verifyTradeWithClaude(sym, data.setups[i], data.cp, data.b4h, data.b1h);
+    const v = await verifyTradeWithClaude(sym, data.setups[i], data);
     if (v?.approved) out.push({ setup: data.setups[i], verification: v });
     await new Promise(r => setTimeout(r, 400));
   }
@@ -2119,10 +2057,13 @@ async function testClaudeVerification() {
       { p: 65500, rr: 2.5, lbl: 'next FVG' },
       { p: 66000, rr: 3.3, lbl: '4H magnet' }
     ],
-    lng: true
+    lng: true,
+    trigger: 'AWAITING',
+    invalidation: 63800
   };
+  const dummyData = { cp: 64400, b4h: 'BULLISH', b1h: 'BULLISH', mode: 'swing' };
 
-  const result = await verifyTradeWithClaude('BTCUSD', dummySetup, 64400, 'BULLISH', 'BULLISH');
+  const result = await verifyTradeWithClaude('BTCUSD', dummySetup, dummyData);
 
   if (result) {
     if (st) {

@@ -85,4 +85,10 @@ jobs:
           git config user.email "jarvis-bot@users.noreply.github.com"
           git add state.json
           git commit -m "paper state $(date -u +%FT%TZ) [skip ci]" || { echo "no change"; exit 0; }
-          git push origin paper-data
+          # Retry with rebase: a failed push leaves stale state → duplicate pings next
+          # run, and backtest.yml writes the same branch, so a non-fast-forward is possible.
+          for i in 1 2 3; do
+            git push origin paper-data && { echo "pushed"; break; }
+            echo "push failed (attempt $i) — re-syncing"; git pull --rebase origin paper-data || true; sleep 3
+            [ "$i" = 3 ] && { echo "push failed after retries"; exit 1; }
+          done
