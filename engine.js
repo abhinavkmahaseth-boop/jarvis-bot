@@ -16,14 +16,30 @@
     const sec = TF_SEC[res];
     const now = Math.floor(Date.now() / 1000);
     const start = now - Math.floor(count * sec * 1.4);
-    const r = await fetch(`https://api.india.delta.exchange/v2/history/candles?symbol=${sym}&resolution=${res}&start=${start}&end=${now}`);
-    const j = await r.json();
-    if (!j.success || !j.result?.length) throw new Error(`No data: ${sym} ${res}`);
-    const bars = j.result.sort((a, b) => a.time - b.time);
-    // Drop the still-forming candle so structure/FVG detection never repaints on an open bar.
-    const last = bars[bars.length - 1];
-    if (last && (last.time + sec) > now) bars.pop();
-    return bars;
+    const url = `https://api.india.delta.exchange/v2/history/candles?symbol=${sym}&resolution=${res}&start=${start}&end=${now}`;
+    // Delta occasionally returns a 5xx/Cloudflare HTML page instead of JSON; one
+    // bad response used to crash the whole monitor cycle. Retry up to 3 times with
+    // backoff and only accept a real JSON body, so a transient blip is absorbed.
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`HTTP ${r.status} for ${sym} ${res}`);
+        const text = await r.text();
+        if (/^\s*</.test(text)) throw new Error(`non-JSON (HTML) response for ${sym} ${res}`);
+        const j = JSON.parse(text);
+        if (!j.success || !j.result?.length) throw new Error(`No data: ${sym} ${res}`);
+        const bars = j.result.sort((a, b) => a.time - b.time);
+        // Drop the still-forming candle so structure/FVG detection never repaints on an open bar.
+        const last = bars[bars.length - 1];
+        if (last && (last.time + sec) > now) bars.pop();
+        return bars;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
+    throw lastErr;
   }
 
   // ── Market structure ────────────────────────────────────────────────────────
