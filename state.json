@@ -1,34 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1781616661805-4gw70",
-      "sym": "BTCUSD",
-      "dir": "LONG",
-      "lng": true,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 65882,
-      "zoneHigh": 65937,
-      "entry": 65909.5,
-      "sl": 65816.0055,
-      "tp1": 66263.5,
-      "tp2": 66359.25,
-      "tp3": 66497.75,
-      "rr1": 3.786318981330424,
-      "rr2": 4.810443395065984,
-      "rr3": 6.2918139569706835,
-      "invalidation": 65617.5,
-      "trigger": "PENDING",
-      "claude": "Grade A FVG with bullish alignment across timeframes, excellent R:R (1:3.79+), tight SL (0.14% risk), entry reachable within session volatility, and clear invalidation level provides defined risk management.",
-      "createdAt": 1781616661805,
-      "enteredAt": 1781617244586,
-      "stage": 0,
-      "stop": 65816.0055,
-      "realizedR": 0,
-      "remaining": 1
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -60,8 +32,39 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781615700000
+    },
+    {
+      "id": "1781616661805-4gw70",
+      "sym": "BTCUSD",
+      "dir": "LONG",
+      "lng": true,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 65882,
+      "zoneHigh": 65937,
+      "entry": 65909.5,
+      "sl": 65816.0055,
+      "tp1": 66263.5,
+      "tp2": 66359.25,
+      "tp3": 66497.75,
+      "rr1": 3.786318981330424,
+      "rr2": 4.810443395065984,
+      "rr3": 6.2918139569706835,
+      "invalidation": 65617.5,
+      "trigger": "PENDING",
+      "claude": "Grade A FVG with bullish alignment across timeframes, excellent R:R (1:3.79+), tight SL (0.14% risk), entry reachable within session volatility, and clear invalidation level provides defined risk management.",
+      "createdAt": 1781616661805,
+      "enteredAt": 1781617244586,
+      "stage": 0,
+      "stop": 65816.0055,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781619300000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T14:10:55.727Z"
+  "updatedAt": "2026-06-16T14:20:50.015Z"
 }
