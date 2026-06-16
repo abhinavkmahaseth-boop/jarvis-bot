@@ -24,6 +24,12 @@ const R_DOLLAR   = ACCOUNT * RISK_PCT;          // $ value of 1R
 const STALE_MS   = 6 * 3600 * 1000;             // cancel un-filled setups after 6h
 const COOLDOWN_MS= 2 * 3600 * 1000;             // don't re-enter the same zone for 2h
 const ZONE_TOL   = 0.0015;                       // 0.15% = "same zone"
+// Only act on candles that have been CLOSED for at least this many extra bars. The
+// most-recently-closed bar can still carry a bad tick/wick that the exchange cleans
+// up within a minute or two; holding it back one bar means fills and exits are only
+// booked off SETTLED price data — so the books reflect what really happened, never a
+// transient bad print. (Combined with replay-from-entry below.)
+const SETTLE_BARS= 1;
 const STATE_FILE = process.env.STATE_FILE || path.join(process.cwd(), 'state.json');
 // Second, independent book: same engine + exit model, but NO Claude gate and
 // Grade-A only — the live forward-test of the 60-day backtest. Separate state file.
@@ -116,6 +122,28 @@ function manageTrade(t, candles) {
   }
   return null; // still open
 }
+// Re-derive a trade's outcome from the ENTRY, on every run, using a FRESH simulation
+// over the given (settled) candles. Because the whole life is replayed from scratch
+// against the latest clean data, a bad print that briefly appeared in an earlier run
+// simply never gets baked in — the recorded state always matches real price action.
+// Returns { done, live }: done = the closed trade (settled) or null; live = the
+// current in-progress state (stage/stop/realized/remaining) to persist for display.
+function replayTrade(t, candles) {
+  const risk = Math.abs(t.entry - t.sl) || t.entry * 0.001;
+  const rrOf = p => t.lng ? (p - t.entry) / risk : (t.entry - p) / risk;
+  const sim = {
+    ...t,
+    stop: t.sl, stage: 0, realizedR: 0, remaining: 1,            // reset to the moment of entry
+    rr1: t.rr1 ?? rrOf(t.tp1), rr2: t.rr2 ?? rrOf(t.tp2), rr3: t.rr3 ?? rrOf(t.tp3),
+    exitReason: undefined, exitPrice: undefined, totalR: undefined, pnl: undefined, closedAt: undefined,
+  };
+  let done = null;
+  for (const c of candles.filter(c => c.time * 1000 >= t.enteredAt)) {
+    done = applyBar(sim, c);
+    if (done) break;
+  }
+  return { done, live: sim };
+}
 function finishTrade(t, c, reason, exitPrice) {
   t.exitReason = reason;
   t.exitPrice = exitPrice != null ? +(+exitPrice).toFixed(2) : null;
@@ -131,30 +159,38 @@ function finishTrade(t, c, reason, exitPrice) {
 async function runBook(cfg, data, c5) {
   const state = loadState(cfg.file);
   enforceSinglePosition(state);   // absorb any legacy double-pending before processing
+  // Settled candles only — drop the most-recently-closed bar so a bad print has a
+  // bar to be corrected before we fill or exit off it. Everything below uses these.
+  const settled = SETTLE_BARS > 0 ? c5.slice(0, -SETTLE_BARS) : c5;
   console.log(`[${cfg.label}] cp=${data.cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
 
-  // 1) Manage open trades — CLOSED pings on both books
+  // 1) Manage open trades by REPLAYING each from entry on settled candles. The trade
+  //    only closes when that close is confirmed by settled data; otherwise we just
+  //    refresh its in-progress state. CLOSED pings on both books.
   for (const t of [...state.open]) {
-    const done = manageTrade(t, c5);
+    const { done, live } = replayTrade(t, settled);
     if (done) {
       state.open = state.open.filter(x => x.id !== t.id);
       state.closed.push(done);
       const emoji = done.totalR > 0 ? '✅' : done.totalR < 0 ? '❌' : '➖';
       await tg(
         `🏁 <b>CLOSED — BTC ${done.dir}</b>${cfg.tag} ${emoji}\n` +
-        `Exit: ${done.exitReason}  ·  <b>${done.totalR > 0 ? '+' : ''}${done.totalR}R</b>  ·  ${done.pnl >= 0 ? '+' : ''}$${F(done.pnl)}\n` +
+        `Exit: ${done.exitReason} @ ${F(done.exitPrice)}  ·  <b>${done.totalR > 0 ? '+' : ''}${done.totalR}R</b>  ·  ${done.pnl >= 0 ? '+' : ''}$${F(done.pnl)}\n` +
         `Account: <b>$${F(equityOf(state))}</b>  ·  ${state.closed.length} trades · ${winRateOf(state)}% win`
       );
+    } else {
+      // still open — persist the freshly re-derived state for the dashboard / live P&L
+      t.stage = live.stage; t.stop = live.stop; t.realizedR = live.realizedR; t.remaining = live.remaining;
     }
   }
 
-  // 2) Pending → fill or expire
+  // 2) Pending → fill or expire (on SETTLED candles, so a bad wick can't phantom-fill)
   for (const p of [...state.pending]) {
-    const bars = c5.filter(c => c.time * 1000 >= p.createdAt);
+    const bars = settled.filter(c => c.time * 1000 >= p.createdAt);
     const voided = p.invalidation != null && bars.some(c => p.lng ? c.close < p.invalidation : c.close > p.invalidation);
     const stale = now() - p.createdAt > STALE_MS;
-    const tapped = bars.some(c => p.lng ? c.low <= p.entry : c.high >= p.entry);
-    if (tapped) {
+    const tapBar = bars.find(c => p.lng ? c.low <= p.entry : c.high >= p.entry);
+    if (tapBar) {
       state.pending = state.pending.filter(x => x.id !== p.id);
       // One trade per symbol: if a position for this symbol is already open (incl. one
       // just filled earlier in this same pass), skip — never stack a second entry.
@@ -164,7 +200,10 @@ async function runBook(cfg, data, c5) {
           await tg(`🚫 <b>SETUP SKIPPED — BTC ${p.dir}</b>\nAlready in an open ${p.sym.replace('USD', '')} position · missed entry ${F(p.entry)}`);
         continue;
       }
-      state.open.push({ ...p, enteredAt: now(), stage: 0, stop: p.sl, realizedR: 0, remaining: 1 });
+      // Deterministic entry time = close of the bar that tapped, so management (and any
+      // later replay/audit) reproduces the exact same candles every time.
+      const enteredAt = (tapBar.time + ENGINE.TF_SEC['5m']) * 1000;
+      state.open.push({ ...p, enteredAt, stage: 0, stop: p.sl, realizedR: 0, remaining: 1 });
       if (cfg.pings === 'full') {
         const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
         await tg(
@@ -276,6 +315,6 @@ if (require.main === module) {
     } catch (e) { console.error('paper-trade error:', e); process.exit(1); }
   })();
 } else {
-  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, runBook, reviewBook,
+  module.exports = { manageTrade, applyBar, replayTrade, finishTrade, monitor, review, runBook, reviewBook,
                      enforceSinglePosition, symOpen, symActive, isKnown, R_DOLLAR };
 }

@@ -3,7 +3,7 @@
 // silently: orderTPs (the structural TP ladder) and applyBar (the TP1-then-trail
 // exit state machine). No network. Run in CI alongside the smoke test.
 const ENGINE = require('../../engine.js');
-const { applyBar, enforceSinglePosition, symOpen, symActive } = require('./paper-trade.js');
+const { applyBar, replayTrade, enforceSinglePosition, symOpen, symActive } = require('./paper-trade.js');
 
 let fails = 0;
 const approx = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
@@ -87,6 +87,32 @@ const mk = o => Object.assign({ entry: 100, sl: 95, lng: true, stop: 95, stage: 
   ok(symOpen(st, 'BTCUSD') && symActive(st, 'BTCUSD') && !symActive(st, 'SOLUSD'), 'symOpen/symActive detect the live position');
   const st2 = { open: [], pending: [{ sym: 'BTCUSD' }], closed: [] };
   ok(!symOpen(st2, 'BTCUSD') && symActive(st2, 'BTCUSD'), 'symActive true on pending-only, symOpen false');
+}
+
+// ── replayTrade: re-derive from entry + ignore unsettled bad ticks ───────────
+// trade: LONG entry 100, sl 95 (1R), tp1 110 (2R). enteredAt at t=0 so all bars manage.
+const mkT = o => Object.assign({ sym:'BTCUSD', dir:'LONG', lng:true, entry:100, sl:95, tp1:110, tp2:115, tp3:130, enteredAt:0 }, o);
+{ // clean data, price never reaches tp1 or sl → stays open (no phantom close)
+  const candles = [{time:1,high:104,low:99},{time:2,high:106,low:101},{time:3,high:103,low:98}];
+  const { done } = replayTrade(mkT(), candles);
+  ok(done === null, 'replay: price between SL and TP1 → trade stays OPEN (no phantom)', done ? `closed ${done.exitReason}` : 'open');
+}
+{ // a single unsettled bar with a bad wick to tp1 would book a phantom TP1;
+  // the settle-delay drops that bar so it never affects the recorded trade.
+  const clean = [{time:1,high:104,low:99},{time:2,high:106,low:101}];
+  const badLastBar = { time:3, high:111, low:101 };          // phantom wick >= tp1 110
+  const withBad = [...clean, badLastBar];
+  const settled = withBad.slice(0, -1);                       // SETTLE_BARS = 1 drops it
+  ok(replayTrade(mkT(), withBad).live.realizedR > 0,
+     'replay on UNsettled bad wick books a phantom TP1 (the risk this fixes)');
+  const sett = replayTrade(mkT(), settled);
+  ok(sett.done === null && sett.live.realizedR === 0,
+     'replay on SETTLED candles ignores the unsettled bad wick → no phantom TP1');
+}
+{ // real SL hit on settled data is honored
+  const candles = [{time:1,high:104,low:99},{time:2,high:101,low:94}];   // bar 2 hits sl 95
+  const { done } = replayTrade(mkT(), candles);
+  ok(done && done.exitReason === 'SL' && approx(done.totalR, -1), 'replay: real SL on settled data → -1R', done && `${done.exitReason} ${done.totalR}R`);
 }
 
 console.log(fails === 0 ? '\n✅ UNIT TESTS PASSED' : `\n❌ UNIT TESTS FAILED (${fails})`);
