@@ -1,5 +1,28 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781633751780-vkrhi",
+      "sym": "BTCUSD",
+      "dir": "LONG",
+      "lng": true,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 65807,
+      "zoneHigh": 65927.5,
+      "entry": 65867.25,
+      "sl": 65740.8875,
+      "tp1": 66256.5,
+      "tp2": 66359.25,
+      "tp3": 66497.75,
+      "rr1": 3.0804233851023133,
+      "rr2": 3.893560193886546,
+      "rr3": 4.989613215946072,
+      "invalidation": 65617.5,
+      "trigger": "AWAITING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781633751780
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -68,5 +91,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T18:13:31.532Z"
+  "updatedAt": "2026-06-16T18:15:51.780Z"
 }
