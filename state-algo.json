@@ -1,6 +1,34 @@
 {
   "pending": [],
-  "open": [],
+  "open": [
+    {
+      "id": "1781619650456-ujend",
+      "sym": "BTCUSD",
+      "dir": "LONG",
+      "lng": true,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 65596.5,
+      "zoneHigh": 65669.5,
+      "entry": 65633,
+      "sl": 65530.816,
+      "tp1": 65908,
+      "tp2": 65990.25,
+      "tp3": 66263.5,
+      "rr1": 2.691223674939296,
+      "rr2": 3.4961442104438674,
+      "rr3": 6.170241916542641,
+      "invalidation": 65617.5,
+      "trigger": "AWAITING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781619650456,
+      "enteredAt": 1781620265676,
+      "stage": 1,
+      "stop": 65633,
+      "realizedR": 1.345611837469648,
+      "remaining": 0.5
+    }
+  ],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -31,40 +59,10 @@
       "exitReason": "SL",
       "totalR": -1,
       "pnl": -20,
-      "closedAt": 1781619300000
-    },
-    {
-      "id": "1781619650456-ujend",
-      "sym": "BTCUSD",
-      "dir": "LONG",
-      "lng": true,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 65596.5,
-      "zoneHigh": 65669.5,
-      "entry": 65633,
-      "sl": 65530.816,
-      "tp1": 65908,
-      "tp2": 65990.25,
-      "tp3": 66263.5,
-      "rr1": 2.691223674939296,
-      "rr2": 3.4961442104438674,
-      "rr3": 6.170241916542641,
-      "invalidation": 65617.5,
-      "trigger": "AWAITING",
-      "claude": "auto · no Claude",
-      "createdAt": 1781619650456,
-      "enteredAt": 1781620265676,
-      "stage": 1,
-      "stop": 65633,
-      "realizedR": 1.345611837469648,
-      "remaining": 0,
-      "exitReason": "BE",
-      "totalR": 1.35,
-      "pnl": 27,
-      "closedAt": 1781620500000
+      "closedAt": 1781619300000,
+      "exitPrice": 65815.62
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T16:24:13.199Z"
+  "updatedAt": "2026-06-16T16:24:05.549Z"
 }
