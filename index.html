@@ -4,28 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JARVIS — SMC Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#030810;--bg1:#060d1a;--bg2:#0a1220;--bg3:#0f1a2c;
-  --border:#0d2035;--border2:#102840;
-  --text:#b8d8f0;--text2:#4a7a9a;--text3:#1e4060;
-  --accent:#00c8f0;--accent-dim:#003850;
-  --green:#00e5a0;--red:#ff4466;--amber:#f0a020;--purple:#8060ff;
-  --sidebar-w:220px;
+  /* Professional slate dark theme — refined, high-contrast, low-glare */
+  --bg:#0b0e14;--bg1:#0f131b;--bg2:#141922;--bg3:#1b212c;--card:#141922;
+  --border:#222a36;--border2:#2f3947;
+  --text:#e8edf4;--text2:#9ba7b8;--text3:#5c6878;
+  --accent:#5b8def;--accent-dim:#1c3050;
+  --green:#23d18b;--red:#f0556b;--amber:#e0a13a;--purple:#7c6cf0;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.22);
+  --sidebar-w:224px;
 }
 html,body{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:13px}
-::-webkit-scrollbar{width:4px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:13px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:-.005em}
+::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
 .sidebar{
   width:var(--sidebar-w);min-width:var(--sidebar-w);
-  background:linear-gradient(180deg,#060f20 0%,#040a14 100%);
+  background:var(--bg1);
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;
   padding:1.4rem 1rem 1.25rem;gap:2rem;
@@ -33,7 +38,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 }
 .sb-logo{border-bottom:1px solid var(--border);padding-bottom:1.1rem}
 .sb-logo-inner{display:flex;align-items:center;gap:10px}
-.sb-logo h1{font-size:20px;font-weight:700;color:#00c8f0;letter-spacing:.2em;text-transform:uppercase;text-shadow:0 0 16px rgba(0,200,240,.4)}
+.sb-logo h1{font-size:19px;font-weight:700;color:var(--text);letter-spacing:.22em;text-transform:uppercase}
 .sb-logo p{font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:.07em;text-transform:uppercase}
 .sb-live{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--green);margin-top:6px;letter-spacing:.04em}
 .sb-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 2s infinite;box-shadow:0 0 5px var(--green)}
@@ -46,8 +51,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
   font-size:12px;font-weight:500;transition:all .15s;
   border:1px solid transparent;letter-spacing:.03em;user-select:none
 }
-.nav-link:hover{background:rgba(0,200,240,.06);color:var(--text);border-color:transparent}
-.nav-link.active{background:rgba(0,200,240,.1);border-color:rgba(0,200,240,.18);color:var(--accent)}
+.nav-link:hover{background:rgba(91,141,239,.06);color:var(--text);border-color:transparent}
+.nav-link.active{background:rgba(91,141,239,.1);border-color:rgba(91,141,239,.18);color:var(--accent)}
 .nav-link svg{flex-shrink:0;opacity:.6}
 .nav-link.active svg{opacity:1}
 .nav-sep{height:1px;background:var(--border);margin:.5rem 0}
@@ -69,19 +74,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 
 /* ── Buttons (shared) ─────────────────────────────────────────── */
 .btn{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid;transition:all .15s;letter-spacing:.03em}
-.btn-algo{background:rgba(0,200,240,.08);border-color:rgba(0,200,240,.3);color:var(--accent)}
-.btn-algo:hover{background:rgba(0,200,240,.15)}
+.btn-algo{background:rgba(91,141,239,.08);border-color:rgba(91,141,239,.3);color:var(--accent)}
+.btn-algo:hover{background:rgba(91,141,239,.15)}
 .btn-ai{background:rgba(128,96,255,.08);border-color:#4030a0;color:#a090ff}
 .btn-ai:hover{background:rgba(128,96,255,.15)}
 .btn-dl{background:rgba(240,160,32,.06);border-color:#604008;color:var(--amber)}
 .btn-dl:hover{background:rgba(240,160,32,.12)}
-.btn-save{background:rgba(0,229,160,.07);border-color:#005540;color:var(--green)}
-.btn-save:hover{background:rgba(0,229,160,.13)}
+.btn-save{background:rgba(35,209,139,.07);border-color:#005540;color:var(--green)}
+.btn-save:hover{background:rgba(35,209,139,.13)}
 
 /* ── Dashboard page ───────────────────────────────────────────── */
 .sym-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;display:flex;flex-direction:column;gap:8px;transition:border-color .2s}
-.card:hover{border-color:var(--border2)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:border-color .2s,box-shadow .2s,transform .2s}
+.card:hover{border-color:var(--border2);box-shadow:var(--shadow);transform:translateY(-1px)}
 .card.closed-market{opacity:.5}
 .card-hd{display:flex;justify-content:space-between;align-items:flex-start}
 .card-sym{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text2);text-transform:uppercase}
@@ -97,8 +102,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .card-tf-pill{position:absolute;top:5px;right:6px;font-size:9px;color:var(--text3);letter-spacing:.06em;pointer-events:none}
 .card-btns{display:flex;gap:5px}
 .abtn{flex:1;padding:6px 0;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid;text-align:center}
-.abtn-algo{background:rgba(0,200,240,.07);border-color:rgba(0,200,240,.25);color:var(--accent)}
-.abtn-algo:hover{background:rgba(0,200,240,.14)}
+.abtn-algo{background:rgba(91,141,239,.07);border-color:rgba(91,141,239,.25);color:var(--accent)}
+.abtn-algo:hover{background:rgba(91,141,239,.14)}
 .abtn-ai{background:rgba(128,96,255,.07);border-color:#4030a0;color:#a090ff}
 .abtn-ai:hover{background:rgba(128,96,255,.14)}
 .abtn:disabled{opacity:.4;cursor:not-allowed}
@@ -111,14 +116,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .out-tabs{display:flex;gap:0;border-bottom:1px solid var(--border)}
 .tab-btn{padding:7px 18px;background:transparent;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--text3);font-size:12px;cursor:pointer;transition:all .15s;font-weight:500}
 .tab-btn:hover{color:var(--text2)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);text-shadow:0 0 8px rgba(0,200,240,.35)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-btn.has-data{color:var(--text2)}
 .tab-btn.active.has-data{color:var(--accent)}
 .out-box{background:var(--bg1);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:1.5rem;min-height:200px;flex:1;font-size:13px;line-height:1.8;color:var(--text)}
 .out-box.empty{color:var(--text3);font-style:italic}
 
 /* ── Data page ────────────────────────────────────────────────── */
-.data-table-wrap{background:var(--bg1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.data-table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 .data-table{width:100%;border-collapse:collapse}
 .data-table th{background:var(--bg2);color:var(--text3);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border)}
 .data-table th:not(:first-child){text-align:center}
@@ -127,7 +132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .data-table td:first-child{font-weight:600;color:var(--text3);font-size:10px;letter-spacing:.08em;text-transform:uppercase;width:60px}
 .data-table td:not(:first-child){text-align:center}
 .dl-btn{padding:5px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text2);font-size:11px;cursor:pointer;transition:all .15s}
-.dl-btn:hover{color:var(--accent);border-color:rgba(0,200,240,.3)}
+.dl-btn:hover{color:var(--accent);border-color:rgba(91,141,239,.3)}
 .dl-btn.ok{border-color:#006640;color:var(--green)}
 .dl-btn.err{border-color:#660022;color:var(--red)}
 .dl-btn.busy{opacity:.4;cursor:not-allowed}
@@ -135,12 +140,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 
 /* ── Settings page ────────────────────────────────────────────── */
 .settings-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:700px}
-.settings-card{background:var(--bg1);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.4rem}
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.4rem;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 .sc-title{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
 .sc-field{display:flex;flex-direction:column;gap:5px;margin-bottom:.75rem}
 .sc-label{font-size:11px;color:var(--text2)}
 .sc-input{padding:7px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:12px;width:100%;outline:none;transition:border-color .15s}
-.sc-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,200,240,.1)}
+.sc-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(91,141,239,.1)}
 .sc-input[type=number]{width:100px}
 .sc-input[type=password]{font-family:monospace}
 .sc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -219,15 +224,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .pos-sym-cell{display:flex;flex-direction:column;gap:2px}
 .pos-sym{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--text)}
 .pos-dir-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;padding:1px 5px;border-radius:3px}
-.pos-dir-badge.lng{background:rgba(0,229,168,.12);color:var(--green)}
-.pos-dir-badge.sht{background:rgba(255,68,102,.12);color:var(--red)}
+.pos-dir-badge.lng{background:rgba(35,209,139,.12);color:var(--green)}
+.pos-dir-badge.sht{background:rgba(240,85,107,.12);color:var(--red)}
 .pos-pnl.up{color:var(--green)}.pos-pnl.dn{color:var(--red)}
 .pos-roe.up{color:var(--green);font-size:10px}.pos-roe.dn{color:var(--red);font-size:10px}
-.btn-close-pos{padding:4px 10px;background:rgba(255,68,102,.06);border:1px solid rgba(255,68,102,.2);border-radius:5px;color:var(--red);font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.btn-close-pos:hover{background:rgba(255,68,102,.14)}
+.btn-close-pos{padding:4px 10px;background:rgba(240,85,107,.06);border:1px solid rgba(240,85,107,.2);border-radius:5px;color:var(--red);font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-close-pos:hover{background:rgba(240,85,107,.14)}
 
 /* ── Auto mode ───────────────────────────────────────────────────── */
-.auto-badge{display:none;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.1em;background:rgba(0,229,168,.1);border:1px solid rgba(0,229,168,.35);color:var(--green);padding:3px 9px;border-radius:10px}
+.auto-badge{display:none;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:.1em;background:rgba(35,209,139,.1);border:1px solid rgba(35,209,139,.35);color:var(--green);padding:3px 9px;border-radius:10px}
 .auto-badge.on{display:inline-flex}
 .mode-pill{display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2px;gap:2px}
 .mode-pill button{font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:16px;border:none;cursor:pointer;background:transparent;color:var(--text3);transition:all .2s}
@@ -241,7 +246,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .sym-select{display:flex;gap:8px;flex-wrap:wrap;margin:.5rem 0}
 .sym-chk{display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;transition:all .15s;user-select:none}
 .sym-chk input{display:none}
-.sym-chk.on{border-color:var(--accent);background:rgba(0,200,240,.1)}
+.sym-chk.on{border-color:var(--accent);background:rgba(91,141,239,.1)}
 .sym-chk .sym-chk-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);transition:background .15s}
 .sym-chk.on .sym-chk-dot{background:var(--accent)}
 .sym-chk-lbl{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--text2)}
@@ -269,11 +274,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
 .jnl-table tr:hover td{background:rgba(255,255,255,.02)}
 .jnl-empty{text-align:center;padding:2.5rem;color:var(--text3);font-size:12px}
 .jnl-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;letter-spacing:.06em}
-.jnl-badge.open{background:rgba(0,200,240,.12);color:var(--accent)}
+.jnl-badge.open{background:rgba(91,141,239,.12);color:var(--accent)}
 .jnl-badge.closed{background:rgba(255,255,255,.07);color:var(--text3)}
-.jnl-badge.lng{background:rgba(0,229,168,.12);color:var(--green)}
-.jnl-badge.sht{background:rgba(255,68,102,.12);color:var(--red)}
-.jnl-badge.grade-a{background:rgba(0,229,168,.15);color:var(--green)}
+.jnl-badge.lng{background:rgba(35,209,139,.12);color:var(--green)}
+.jnl-badge.sht{background:rgba(240,85,107,.12);color:var(--red)}
+.jnl-badge.grade-a{background:rgba(35,209,139,.15);color:var(--green)}
 .jnl-badge.grade-b{background:rgba(255,185,0,.12);color:#f5b800}
 .jnl-pnl.up{color:var(--green)}.jnl-pnl.dn{color:var(--red)}
 
@@ -309,16 +314,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
   <div class="sb-logo">
     <div class="sb-logo-inner">
       <svg width="34" height="34" viewBox="0 0 38 38" fill="none">
-        <polygon points="19,2 35,10.5 35,27.5 19,36 3,27.5 3,10.5" fill="none" stroke="#00c8f0" stroke-width="1.2" opacity="0.9"/>
-        <polygon points="19,7 30,13 30,25 19,31 8,25 8,13" fill="none" stroke="#00c8f0" stroke-width="0.6" opacity="0.35"/>
-        <circle cx="19" cy="19" r="5.5" fill="none" stroke="#00c8f0" stroke-width="1" opacity="0.6"/>
-        <circle cx="19" cy="19" r="2" fill="#00c8f0" opacity="0.9"/>
-        <line x1="19" y1="7" x2="19" y2="13.5" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
-        <line x1="19" y1="24.5" x2="19" y2="31" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
-        <line x1="8" y1="13" x2="13.5" y2="16" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
-        <line x1="24.5" y1="22" x2="30" y2="25" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
-        <line x1="30" y1="13" x2="24.5" y2="16" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
-        <line x1="13.5" y1="22" x2="8" y2="25" stroke="#00c8f0" stroke-width="0.8" opacity="0.45"/>
+        <polygon points="19,2 35,10.5 35,27.5 19,36 3,27.5 3,10.5" fill="none" stroke="#5b8def" stroke-width="1.2" opacity="0.9"/>
+        <polygon points="19,7 30,13 30,25 19,31 8,25 8,13" fill="none" stroke="#5b8def" stroke-width="0.6" opacity="0.35"/>
+        <circle cx="19" cy="19" r="5.5" fill="none" stroke="#5b8def" stroke-width="1" opacity="0.6"/>
+        <circle cx="19" cy="19" r="2" fill="#5b8def" opacity="0.9"/>
+        <line x1="19" y1="7" x2="19" y2="13.5" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
+        <line x1="19" y1="24.5" x2="19" y2="31" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
+        <line x1="8" y1="13" x2="13.5" y2="16" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
+        <line x1="24.5" y1="22" x2="30" y2="25" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
+        <line x1="30" y1="13" x2="24.5" y2="16" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
+        <line x1="13.5" y1="22" x2="8" y2="25" stroke="#5b8def" stroke-width="0.8" opacity="0.45"/>
       </svg>
       <div>
         <h1>JARVIS</h1>
@@ -941,7 +946,7 @@ function buildUI() {
       </div>
       <div class="card-btns">
         <button class="abtn abtn-algo" id="abtn-${s}" onclick="runCard('${s}')" ${!open?'disabled':''}>⚡ Analyse</button>
-        <button class="abtn" id="tgbtn-${s}" onclick="sendSymAlert('${s}',this)" ${!open?'disabled':''} style="background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)">📤</button>
+        <button class="abtn" id="tgbtn-${s}" onclick="sendSymAlert('${s}',this)" ${!open?'disabled':''} style="background:rgba(35,209,139,.06);border-color:rgba(35,209,139,.25);color:var(--green)">📤</button>
       </div>`;
     grid.appendChild(card);
 
@@ -1002,12 +1007,12 @@ async function initCharts() {
         style="width:100%;height:100%;display:block" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#00c8f0" stop-opacity="0.2"/>
-            <stop offset="100%" stop-color="#00c8f0" stop-opacity="0.01"/>
+            <stop offset="0%" stop-color="#5b8def" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#5b8def" stop-opacity="0.01"/>
           </linearGradient>
         </defs>
         <path d="${fill}" fill="url(#${uid})"/>
-        <path d="${line}" fill="none" stroke="#00c8f0" stroke-width="2"
+        <path d="${line}" fill="none" stroke="#5b8def" stroke-width="2"
           stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
       </svg>`;
 
@@ -1150,7 +1155,7 @@ function renderAlgoScalp(sym, data) {
         </div>
         <div style="display:flex;gap:6px;margin-top:.65rem">
           <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
-          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(35,209,139,.06);border-color:rgba(35,209,139,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
         </div>
       </div>`;
     });
@@ -1229,7 +1234,7 @@ function renderAlgo(sym, data) {
         </div>
         <div style="display:flex;gap:6px;margin-top:.65rem">
           <button class="abtn abtn-algo" style="flex:1;padding:9px 0;font-size:11px" onclick="openLogTradeModal('${sym}',${i})">📝 Log Trade</button>
-          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(0,229,168,.06);border-color:rgba(0,229,168,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
+          <button class="abtn" style="flex:1;padding:9px 0;font-size:11px;background:rgba(35,209,139,.06);border-color:rgba(35,209,139,.25);color:var(--green)" onclick="sendSetupAlertWithVerification('${sym}',${i})">📤 Send Alert</button>
         </div>
       </div>`;
     });
