@@ -3,7 +3,7 @@
 // silently: orderTPs (the structural TP ladder) and applyBar (the TP1-then-trail
 // exit state machine). No network. Run in CI alongside the smoke test.
 const ENGINE = require('../../engine.js');
-const { applyBar } = require('./paper-trade.js');
+const { applyBar, enforceSinglePosition, symOpen, symActive } = require('./paper-trade.js');
 
 let fails = 0;
 const approx = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
@@ -58,6 +58,35 @@ const mk = o => Object.assign({ entry: 100, sl: 95, lng: true, stop: 95, stage: 
   const t = mk();
   const d = applyBar(t, { high: 121, low: 100, time: 1 });
   ok(d && approx(d.totalR, 2.5) && d.exitReason === 'TP3', 'runner to TP3 → +2.5R (TP3)', d && `${d.totalR}R ${d.exitReason}`);
+}
+
+// ── One-trade-per-symbol invariant (no double entries) ───────────────────────
+{ // two BTC pendings collapse to the earliest one
+  const st = { open: [], pending: [
+    { sym: 'BTCUSD', createdAt: 200 }, { sym: 'BTCUSD', createdAt: 100 },
+  ], closed: [] };
+  enforceSinglePosition(st);
+  ok(st.pending.length === 1 && st.pending[0].createdAt === 100, 'two BTC pendings → keep earliest one', `${st.pending.length} left`);
+}
+{ // a pending for an already-open symbol is dropped
+  const st = { open: [{ sym: 'BTCUSD' }], pending: [{ sym: 'BTCUSD', createdAt: 100 }], closed: [] };
+  enforceSinglePosition(st);
+  ok(st.pending.length === 0, 'pending dropped when symbol already open', `${st.pending.length} left`);
+}
+{ // different symbols are independent — one each survives
+  const st = { open: [], pending: [
+    { sym: 'BTCUSD', createdAt: 100 }, { sym: 'BTCUSD', createdAt: 200 },
+    { sym: 'SOLUSD', createdAt: 100 }, { sym: 'ETHUSD', createdAt: 100 },
+  ], closed: [] };
+  enforceSinglePosition(st);
+  const byS = st.pending.map(p => p.sym).sort().join(',');
+  ok(st.pending.length === 3 && byS === 'BTCUSD,ETHUSD,SOLUSD', 'one pending per symbol, symbols independent', byS);
+}
+{ // guards report active state correctly
+  const st = { open: [{ sym: 'BTCUSD' }], pending: [], closed: [] };
+  ok(symOpen(st, 'BTCUSD') && symActive(st, 'BTCUSD') && !symActive(st, 'SOLUSD'), 'symOpen/symActive detect the live position');
+  const st2 = { open: [], pending: [{ sym: 'BTCUSD' }], closed: [] };
+  ok(!symOpen(st2, 'BTCUSD') && symActive(st2, 'BTCUSD'), 'symActive true on pending-only, symOpen false');
 }
 
 console.log(fails === 0 ? '\n✅ UNIT TESTS PASSED' : `\n❌ UNIT TESTS FAILED (${fails})`);

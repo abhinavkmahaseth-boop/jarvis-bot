@@ -71,6 +71,20 @@ function isKnown(state, dir, entry) {
   return state.closed.some(t => t.closedAt > cut && sameZone(t, dir, entry));
 }
 
+// ── One-trade-per-symbol guard (no double entries) ────────────────────────────
+const symOpen   = (state, sym) => state.open.some(t => t.sym === sym);
+const symActive = (state, sym) => symOpen(state, sym) || state.pending.some(t => t.sym === sym);
+// Collapse a book to the invariant: drop any pending whose symbol already has an
+// open position, and keep at most ONE pending per symbol (earliest). Idempotent —
+// also absorbs any legacy multi-pending state left by older runs.
+function enforceSinglePosition(state) {
+  state.pending = state.pending.filter(p => !symOpen(state, p.sym));
+  const seen = new Set();
+  state.pending = [...state.pending]
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .filter(p => (seen.has(p.sym) ? false : seen.add(p.sym)));
+}
+
 // ── Trade management: TP1-then-trail state machine ────────────────────────────
 // applyBar processes ONE candle against an open trade (shared by the live monitor
 // and the backtester); returns the closed trade or null if still open.
@@ -115,6 +129,7 @@ function finishTrade(t, c, reason) {
 // filter and how chatty Telegram is. Both books run off the SAME data/candles.
 async function runBook(cfg, data, c5) {
   const state = loadState(cfg.file);
+  enforceSinglePosition(state);   // absorb any legacy double-pending before processing
   console.log(`[${cfg.label}] cp=${data.cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
 
   // 1) Manage open trades — CLOSED pings on both books
@@ -140,6 +155,14 @@ async function runBook(cfg, data, c5) {
     const tapped = bars.some(c => p.lng ? c.low <= p.entry : c.high >= p.entry);
     if (tapped) {
       state.pending = state.pending.filter(x => x.id !== p.id);
+      // One trade per symbol: if a position for this symbol is already open (incl. one
+      // just filled earlier in this same pass), skip — never stack a second entry.
+      if (symOpen(state, p.sym)) {
+        console.log(`  [${cfg.label}] skip fill ${p.dir} ${p.entry} — ${p.sym} already open`);
+        if (cfg.pings === 'full')
+          await tg(`🚫 <b>SETUP SKIPPED — BTC ${p.dir}</b>\nAlready in an open ${p.sym.replace('USD', '')} position · missed entry ${F(p.entry)}`);
+        continue;
+      }
       state.open.push({ ...p, enteredAt: now(), stage: 0, stop: p.sl, realizedR: 0, remaining: 1 });
       if (cfg.pings === 'full') {
         const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
@@ -159,6 +182,9 @@ async function runBook(cfg, data, c5) {
   // 3) New setups — grade-filtered, optionally Claude-gated
   for (const s of (data.setups || [])) {
     if (cfg.grade && s.fvg.grade !== cfg.grade) continue;
+    // One trade per symbol per book: if already open or pending for this symbol,
+    // don't queue another. (Setups are all SYM, so once active we can stop.)
+    if (symActive(state, SYM)) break;
     const dir = s.lng ? 'LONG' : 'SHORT';
     if (isKnown(state, dir, s.entry)) continue;
     let note = 'auto · no Claude';
@@ -249,5 +275,6 @@ if (require.main === module) {
     } catch (e) { console.error('paper-trade error:', e); process.exit(1); }
   })();
 } else {
-  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, runBook, reviewBook, R_DOLLAR };
+  module.exports = { manageTrade, applyBar, finishTrade, monitor, review, runBook, reviewBook,
+                     enforceSinglePosition, symOpen, symActive, isKnown, R_DOLLAR };
 }
