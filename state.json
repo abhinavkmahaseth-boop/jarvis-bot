@@ -1,6 +1,7 @@
 {
   "pending": [],
-  "open": [
+  "open": [],
+  "closed": [
     {
       "id": "1781595060015-rhpiy",
       "sym": "BTCUSD",
@@ -25,11 +26,14 @@
       "enteredAt": 1781615449858,
       "stage": 0,
       "stop": 66177.1925,
-      "realizedR": 0,
-      "remaining": 1
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781615700000
     }
   ],
-  "closed": [],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T13:15:47.937Z"
+  "updatedAt": "2026-06-16T13:20:46.482Z"
 }
