@@ -841,9 +841,14 @@ async function _renderPaperBook(url, elId, opts) {
   const td = (v, c) => `<td style="padding:.35rem .5rem;border-bottom:1px solid var(--border)${c?';color:'+c:''}">${v}</td>`;
   const dirBadge = d => `<b style="color:${d==='LONG'?'var(--green)':'var(--red)'}">${esc(d)}</b>`;
 
-  // OPEN
-  const openRows = open.map(t => `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`);
-  h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','TP1 / TP2 / TP3','Opened']);
+  // OPEN — with a Live P&L cell that ticks from the WebSocket price feed
+  const rDollar = (start || 1000) * 0.02;     // 1R in $ (2% risk)
+  const openRows = open.map(t => {
+    const slRef = t.sl ?? t.stop;
+    const pnlCell = `<td class="opos-pnl" data-sym="${esc(t.sym || 'BTCUSD')}" data-entry="${t.entry}" data-sl="${slRef}" data-lng="${t.lng ? 1 : 0}" data-rz="${t.realizedR || 0}" data-rem="${t.remaining ?? 1}" data-rd="${rDollar}" style="padding:.35rem .5rem;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap"><span style="color:var(--text3)">…</span></td>`;
+    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${pnlCell}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`;
+  });
+  h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','Live P&L','TP1 / TP2 / TP3','Opened']);
 
   // PENDING (label differs: Claude reason vs auto note)
   const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+esc(p.grade))}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(esc(p.claude||''), 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
@@ -857,8 +862,28 @@ async function _renderPaperBook(url, elId, opts) {
   });
   h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit','R','P&L','Closed']);
 
-  h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · data may lag ~5 min (GitHub CDN)</div>`;
+  h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · live P&L from real-time price · table data may lag ~5 min (GitHub CDN)</div>`;
   el.innerHTML = h;
+  _tickPaperPnl();                                  // paint immediately
+  if (!window._paperPnlTimer) window._paperPnlTimer = setInterval(_tickPaperPnl, 1500);  // then tick live
+}
+
+// Recompute unrealized P&L for every open-position row from the live WS price.
+// liveR = realized (booked at TP1) + remaining-size × current R from entry.
+function _tickPaperPnl() {
+  document.querySelectorAll('.opos-pnl').forEach(cell => {
+    const d = cell.dataset, cp = _livePrices[d.sym];
+    const entry = +d.entry, sl = +d.sl, risk = Math.abs(entry - sl);
+    if (cp == null || !isFinite(cp) || !risk) { cell.innerHTML = '<span style="color:var(--text3)">…</span>'; return; }
+    const rNow = (d.lng === '1') ? (cp - entry) / risk : (entry - cp) / risk;
+    const liveR = (+d.rz) + (+d.rem) * rNow;
+    const usd = liveR * (+d.rd);
+    const col = liveR >= 0 ? 'var(--green)' : 'var(--red)';
+    cell.innerHTML = `<span style="color:${col};font-weight:600">${liveR >= 0 ? '+' : ''}${liveR.toFixed(2)}R</span>`
+      + `<span style="color:var(--text3)"> · </span>`
+      + `<span style="color:${col}">${usd >= 0 ? '+' : ''}$${F(usd)}</span>`
+      + `<span style="color:var(--text3);font-size:10px"> @ ${F(cp)}</span>`;
+  });
 }
 
 // ── Backtest viewer (reads backtest.json from the paper-data branch) ──────────
