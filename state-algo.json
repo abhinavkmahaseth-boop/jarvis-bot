@@ -1,5 +1,28 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781640078747-cacvm",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "5M",
+      "zoneLow": 65771.5,
+      "zoneHigh": 65800,
+      "entry": 65785.75,
+      "sl": 65865.6595,
+      "tp1": 65617.5,
+      "tp2": 65348,
+      "tp3": 65000,
+      "rr1": 2.1055068546294495,
+      "rr2": 5.478072069028479,
+      "rr3": 9.832998579643924,
+      "invalidation": 66964,
+      "trigger": "CONFIRMED",
+      "claude": "auto · no Claude",
+      "createdAt": 1781640078747
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -100,5 +123,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T19:55:40.394Z"
+  "updatedAt": "2026-06-16T20:01:18.747Z"
 }
