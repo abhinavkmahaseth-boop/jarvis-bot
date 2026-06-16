@@ -38,26 +38,26 @@ const mk = o => Object.assign({ entry: 100, sl: 95, lng: true, stop: 95, stage: 
 { // straight stop-out at stage 0 → full -1R
   const t = mk();
   const d = applyBar(t, { high: 101, low: 94, time: 1 });
-  ok(d && approx(d.totalR, -1) && d.exitReason === 'SL', 'stop at stage 0 → -1R (SL)', d && `${d.totalR}R ${d.exitReason}`);
+  ok(d && approx(d.totalR, -1) && d.exitReason === 'SL' && approx(d.exitPrice, 95), 'stop at stage 0 → -1R (SL) @ 95', d && `${d.totalR}R ${d.exitReason} @${d.exitPrice}`);
 }
-{ // tap TP1 (book 0.5R, stop→BE), then stop at BE → +0.5R
+{ // tap TP1 (book 0.5R, stop→BE), then stop at BE → +0.5R, exit @ entry
   const t = mk();
   ok(applyBar(t, { high: 106, low: 100, time: 1 }) === null, 'TP1 tap keeps trade open');
   ok(t.stage === 1 && approx(t.stop, 100), 'after TP1: stage 1, stop at breakeven', `stage ${t.stage} stop ${t.stop}`);
   const d = applyBar(t, { high: 101, low: 99, time: 2 });
-  ok(d && approx(d.totalR, 0.5) && d.exitReason === 'BE', 'TP1 then BE → +0.5R (BE)', d && `${d.totalR}R ${d.exitReason}`);
+  ok(d && approx(d.totalR, 0.5) && d.exitReason === 'BE' && approx(d.exitPrice, 100), 'TP1 then BE → +0.5R (BE) @ 100', d && `${d.totalR}R ${d.exitReason} @${d.exitPrice}`);
 }
-{ // TP1 + TP2 (stop→TP1), then trail stop hit at TP1 → +1R total
+{ // TP1 + TP2 (stop→TP1), then trail stop hit at TP1 → +1R total, exit @ tp1
   const t = mk();
   applyBar(t, { high: 111, low: 100, time: 1 });   // crosses TP1 and TP2 same bar
   ok(t.stage === 2 && approx(t.stop, 105), 'after TP2: stage 2, stop at TP1', `stage ${t.stage} stop ${t.stop}`);
   const d = applyBar(t, { high: 106, low: 104, time: 2 });
-  ok(d && approx(d.totalR, 1) && d.exitReason === 'TP1-trail', 'TP2 then trail → +1R (TP1-trail)', d && `${d.totalR}R ${d.exitReason}`);
+  ok(d && approx(d.totalR, 1) && d.exitReason === 'TP1-trail' && approx(d.exitPrice, 105), 'TP2 then trail → +1R (TP1-trail) @ 105', d && `${d.totalR}R ${d.exitReason} @${d.exitPrice}`);
 }
-{ // runner to TP3 → 0.5*1 + 0.5*4 = 2.5R
+{ // runner to TP3 → 0.5*1 + 0.5*4 = 2.5R, exit @ tp3
   const t = mk();
   const d = applyBar(t, { high: 121, low: 100, time: 1 });
-  ok(d && approx(d.totalR, 2.5) && d.exitReason === 'TP3', 'runner to TP3 → +2.5R (TP3)', d && `${d.totalR}R ${d.exitReason}`);
+  ok(d && approx(d.totalR, 2.5) && d.exitReason === 'TP3' && approx(d.exitPrice, 120), 'runner to TP3 → +2.5R (TP3) @ 120', d && `${d.totalR}R ${d.exitReason} @${d.exitPrice}`);
 }
 
 // ── One-trade-per-symbol invariant (no double entries) ───────────────────────

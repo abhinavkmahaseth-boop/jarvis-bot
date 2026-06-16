@@ -770,6 +770,36 @@ function _pDate(ms) {
   if (!ms) return '—';
   return new Date(ms).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
 }
+// ── Exit-detail helpers for the closed-trades table ───────────────────────────
+function _exitPrice(t) {
+  if (t.exitPrice != null) return t.exitPrice;
+  // derive for legacy trades recorded before exitPrice was stored
+  return t.exitReason === 'TP3' ? t.tp3
+       : t.exitReason === 'TP1-trail' ? t.tp1
+       : t.exitReason === 'BE' ? t.entry
+       : t.exitReason === 'SL' ? t.sl : null;
+}
+function _exitLabel(r) {
+  return r === 'SL' ? '🛑 Stopped out'
+       : r === 'BE' ? '➖ Breakeven · TP1 booked'
+       : r === 'TP1-trail' ? '🔒 Trailed to TP1 · TP2 booked'
+       : r === 'TP3' ? '🎯 TP3 hit'
+       : (r || '—');
+}
+function _exitTip(r) {
+  return r === 'SL' ? 'Stop loss hit before TP1 — full 1R loss'
+       : r === 'BE' ? 'TP1 hit (50% booked, stop moved to breakeven); the runner was later stopped at entry'
+       : r === 'TP1-trail' ? 'TP1 & TP2 hit (50% booked, stop trailed up to TP1); the runner was stopped at TP1'
+       : r === 'TP3' ? 'The runner reached the structural TP3 target'
+       : '';
+}
+function _heldFor(start, end) {
+  if (!start || !end || end < start) return '';
+  const m = Math.round((end - start) / 60000);
+  if (m < 60) return m + 'm held';
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h < 24 ? `${h}h${mm ? ' ' + mm + 'm' : ''} held` : `${Math.floor(h/24)}d ${h%24}h held`;
+}
 function _equitySvg(start, closed) {
   if (!closed.length) return '<div style="color:var(--text3);font-size:12px;padding:.5rem 0">Equity curve appears after the first trade closes.</div>';
   const pts = [start]; let eq = start;
@@ -855,12 +885,15 @@ async function _renderPaperBook(url, elId, opts) {
   const pendTitle = isClaude ? `🎯 Pending — Claude-approved, awaiting entry (${pending.length})` : `🎯 Pending — awaiting entry tap (${pending.length})`;
   h += tbl(pendTitle, pendRows, ['Dir','Grade','Entry','Zone', isClaude ? 'Claude' : 'Note', 'Since']);
 
-  // CLOSED (most recent first)
+  // CLOSED (most recent first) — show exit price + plain-English reason + held time
   const closedRows = [...closed].reverse().map(t => {
     const c = pos(t.totalR);
-    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(esc(t.exitReason))}${td((t.totalR>=0?'+':'')+t.totalR+'R', c)}${td((t.pnl>=0?'+':'')+'$'+F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
+    const exPx = _exitPrice(t);
+    const reasonCell = `<span title="${esc(_exitTip(t.exitReason))}">${esc(_exitLabel(t.exitReason))}</span>`;
+    const held = _heldFor(t.enteredAt ?? t.openedAt, t.closedAt);
+    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(exPx != null ? F(exPx) : '—')}${td(reasonCell)}${td((t.totalR>=0?'+':'')+t.totalR+'R', c)}${td((t.pnl>=0?'+':'')+'$'+F(t.pnl), c)}${td(_pDate(t.closedAt) + (held ? `<span style="color:var(--text3)"> · ${held}</span>` : ''))}</tr>`;
   });
-  h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit','R','P&L','Closed']);
+  h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit @','How it exited','R','P&L','Exited']);
 
   h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · live P&L from real-time price · table data may lag ~5 min (GitHub CDN)</div>`;
   el.innerHTML = h;

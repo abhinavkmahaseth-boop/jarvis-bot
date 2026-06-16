@@ -118,7 +118,7 @@ async function tg(text) {
       avgWin: +(wins.length ? gW / wins.length : 0).toFixed(2), avgLoss: +(losses.length ? gL / losses.length : 0).toFixed(2),
       best: closed.length ? Math.max(...closed.map(t => t.totalR)) : 0, worst: closed.length ? Math.min(...closed.map(t => t.totalR)) : 0 },
     equityCurve: curve,
-    closed: closed.map(t => ({ dir: t.dir, grade: t.grade, tf: t.tf, entry: t.entry, sl: t.sl, exitReason: t.exitReason, totalR: t.totalR, pnl: t.pnl, openedAt: t.enteredAt, closedAt: t.closedAt })),
+    closed: closed.map(t => ({ dir: t.dir, grade: t.grade, tf: t.tf, entry: t.entry, sl: t.sl, exitReason: t.exitReason, exitPrice: t.exitPrice, totalR: t.totalR, pnl: t.pnl, openedAt: t.enteredAt, closedAt: t.closedAt })),
   };
   fs.writeFileSync(OUT, JSON.stringify(result, null, 2));
   console.log(`\n=== RESULT ===\ntrades=${closed.length} win=${winRate}% net=${totalR}R ($${netPnl}) PF=${pf === null ? '∞' : pf} maxDD=$${maxDD.toFixed(2)} stillOpen=${open.length}`);

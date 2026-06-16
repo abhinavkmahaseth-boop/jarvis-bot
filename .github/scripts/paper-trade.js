@@ -96,7 +96,7 @@ function applyBar(t, c) {
   if (hitStop) {
     t.realizedR += t.remaining * rAt(t.stop);
     t.remaining = 0;
-    return finishTrade(t, c, t.stage === 0 ? 'SL' : t.stage === 1 ? 'BE' : 'TP1-trail');
+    return finishTrade(t, c, t.stage === 0 ? 'SL' : t.stage === 1 ? 'BE' : 'TP1-trail', t.stop);
   }
   const hitTP1 = t.lng ? hi >= t.tp1 : lo <= t.tp1;
   const hitTP2 = t.lng ? hi >= t.tp2 : lo <= t.tp2;
@@ -105,7 +105,7 @@ function applyBar(t, c) {
   if (t.stage === 1 && hitTP2) { t.stop = t.tp1; t.stage = 2; }
   if (t.stage >= 1 && hitTP3) {
     t.realizedR += t.remaining * t.rr3; t.remaining = 0;
-    return finishTrade(t, c, 'TP3');
+    return finishTrade(t, c, 'TP3', t.tp3);
   }
   return null;
 }
@@ -116,8 +116,9 @@ function manageTrade(t, candles) {
   }
   return null; // still open
 }
-function finishTrade(t, c, reason) {
+function finishTrade(t, c, reason, exitPrice) {
   t.exitReason = reason;
+  t.exitPrice = exitPrice != null ? +(+exitPrice).toFixed(2) : null;
   t.totalR = +t.realizedR.toFixed(2);
   t.pnl = +(t.totalR * R_DOLLAR).toFixed(2);
   t.closedAt = c.time * 1000;
