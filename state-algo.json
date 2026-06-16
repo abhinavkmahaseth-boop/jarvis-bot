@@ -1,34 +1,29 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1781640078747-cacvm",
+      "id": "1781644548344-0xmzc",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "5M",
-      "zoneLow": 65771.5,
-      "zoneHigh": 65800,
-      "entry": 65785.75,
-      "sl": 65865.6595,
-      "tp1": 65617.5,
-      "tp2": 65348,
-      "tp3": 65000,
-      "rr1": 2.1055068546294495,
-      "rr2": 5.478072069028479,
-      "rr3": 9.832998579643924,
+      "tf": "15M",
+      "zoneLow": 66479.5,
+      "zoneHigh": 66516,
+      "entry": 66497.75,
+      "sl": 66581.8925,
+      "tp1": 66302.625,
+      "tp2": 66085.25,
+      "tp3": 65775,
+      "rr1": 2.318982678194681,
+      "rr2": 4.902397718156597,
+      "rr3": 8.5895950322368,
       "invalidation": 66964,
-      "trigger": "CONFIRMED",
+      "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1781640078747,
-      "enteredAt": 1781641200000,
-      "stage": 0,
-      "stop": 65865.6595,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1781644548344
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -125,8 +120,40 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781636400000
+    },
+    {
+      "id": "1781640078747-cacvm",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "5M",
+      "zoneLow": 65771.5,
+      "zoneHigh": 65800,
+      "entry": 65785.75,
+      "sl": 65865.6595,
+      "tp1": 65617.5,
+      "tp2": 65348,
+      "tp3": 65000,
+      "rr1": 2.1055068546294495,
+      "rr2": 5.478072069028479,
+      "rr3": 9.832998579643924,
+      "invalidation": 66964,
+      "trigger": "CONFIRMED",
+      "claude": "auto · no Claude",
+      "createdAt": 1781640078747,
+      "enteredAt": 1781641200000,
+      "stage": 0,
+      "stop": 65865.6595,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 65865.66,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781643900000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T21:05:47.830Z"
+  "updatedAt": "2026-06-16T21:15:48.344Z"
 }
