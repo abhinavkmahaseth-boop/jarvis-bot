@@ -23,8 +23,8 @@
       "claude": "auto · no Claude",
       "createdAt": 1781666441005,
       "enteredAt": 1781671800000,
-      "stage": 1,
-      "stop": 65934.5,
+      "stage": 2,
+      "stop": 65704.25,
       "realizedR": 1.0686587114830592,
       "remaining": 0.5
     }
@@ -160,5 +160,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T06:35:43.685Z"
+  "updatedAt": "2026-06-17T06:40:45.810Z"
 }
