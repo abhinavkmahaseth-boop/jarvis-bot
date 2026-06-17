@@ -1,5 +1,28 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781654471517-nlzg9",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 66247.5,
+      "zoneHigh": 66331.5,
+      "entry": 66289.5,
+      "sl": 66397.152,
+      "tp1": 66085.25,
+      "tp2": 65617.5,
+      "tp3": 65348,
+      "rr1": 1.8973172816110844,
+      "rr2": 6.24233641734467,
+      "rr3": 8.745773418050605,
+      "invalidation": 66964,
+      "trigger": "PENDING",
+      "claude": "Fresh grade-A bearish FVG on 15M with aligned 1H bias, excellent R:R ratios (1:1.90 to 1:8.75), tight SL (0.16%), entry within reach (~0.96% away), and clear invalidation level; Asian session supports lower volatility scalp structure.",
+      "createdAt": 1781654471517
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -66,5 +89,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-16T23:55:35.536Z"
+  "updatedAt": "2026-06-17T00:01:12.087Z"
 }
