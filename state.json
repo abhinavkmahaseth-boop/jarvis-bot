@@ -1,5 +1,28 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781689550781-akq1u",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "5M",
+      "zoneLow": 65173.5,
+      "zoneHigh": 65297,
+      "entry": 65235.25,
+      "sl": 65361.9225,
+      "tp1": 65000,
+      "tp2": 64806,
+      "tp3": 64728.56,
+      "rr1": 1.8571513153999402,
+      "rr2": 3.388659732775449,
+      "rr3": 4,
+      "invalidation": 66099.5,
+      "trigger": "CONFIRMED",
+      "claude": "Grade A fresh bearish FVG with confirmed lower-TF trigger, acceptable 1:1.86+ R:R, tight SL (0.19%), aligned multi-TF bias, and clear invalidation level; entry reachable via minor pullback in established downtrend during liquid session.",
+      "createdAt": 1781689550781
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -66,5 +89,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T09:40:54.477Z"
+  "updatedAt": "2026-06-17T09:45:51.266Z"
 }
