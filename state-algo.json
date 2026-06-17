@@ -1,34 +1,29 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1781700649403-w8qxa",
+      "id": "1781706343205-7qnes",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "5M",
-      "zoneLow": 65173.5,
-      "zoneHigh": 65297,
-      "entry": 65235.25,
-      "sl": 65361.9945,
-      "tp1": 65000,
-      "tp2": 64863,
-      "tp3": 64534,
-      "rr1": 1.8560963197613995,
-      "rr2": 2.937011073458793,
-      "rr3": 5.532784460075161,
+      "tf": "15M",
+      "zoneLow": 65713,
+      "zoneHigh": 65756,
+      "entry": 65734.5,
+      "sl": 65821.224,
+      "tp1": 65604.41399999999,
+      "tp2": 65123.25,
+      "tp3": 65000,
+      "rr1": 1.5,
+      "rr2": 7.048221945482059,
+      "rr3": 8.469397168027111,
       "invalidation": 66099.5,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1781700649403,
-      "enteredAt": 1781703900000,
-      "stage": 0,
-      "stop": 65361.9945,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1781706343205
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -189,8 +184,40 @@
       "totalR": 2.14,
       "pnl": 42.8,
       "closedAt": 1781678100000
+    },
+    {
+      "id": "1781700649403-w8qxa",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "5M",
+      "zoneLow": 65173.5,
+      "zoneHigh": 65297,
+      "entry": 65235.25,
+      "sl": 65361.9945,
+      "tp1": 65000,
+      "tp2": 64863,
+      "tp3": 64534,
+      "rr1": 1.8560963197613995,
+      "rr2": 2.937011073458793,
+      "rr3": 5.532784460075161,
+      "invalidation": 66099.5,
+      "trigger": "PENDING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781700649403,
+      "enteredAt": 1781703900000,
+      "stage": 0,
+      "stop": 65361.9945,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 65361.99,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781705700000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T14:20:44.504Z"
+  "updatedAt": "2026-06-17T14:25:43.205Z"
 }
