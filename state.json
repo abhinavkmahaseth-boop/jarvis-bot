@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1781706666430-ao8u1",
       "sym": "BTCUSD",
@@ -20,10 +21,14 @@
       "invalidation": 66099.5,
       "trigger": "PENDING",
       "claude": "Grade A fresh FVG in aligned bearish bias, strong R:R ratios (1:1.50 to 1:8.47), tight SL (0.13%), entry reachable from current price, optimal session timing, and clear invalidation level at 66099.50.",
-      "createdAt": 1781706666430
+      "createdAt": 1781706666430,
+      "enteredAt": 1781711700000,
+      "stage": 0,
+      "stop": 65821.223,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -121,5 +126,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T15:55:44.436Z"
+  "updatedAt": "2026-06-17T16:01:17.860Z"
 }
