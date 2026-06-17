@@ -1,34 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1781706343205-7qnes",
+      "id": "1781712643808-o4rhv",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
       "tf": "15M",
-      "zoneLow": 65713,
-      "zoneHigh": 65756,
-      "entry": 65734.5,
-      "sl": 65821.224,
-      "tp1": 65604.41399999999,
-      "tp2": 65123.25,
-      "tp3": 65000,
-      "rr1": 1.5,
-      "rr2": 7.048221945482059,
-      "rr3": 8.469397168027111,
+      "zoneLow": 66247.5,
+      "zoneHigh": 66331.5,
+      "entry": 66289.5,
+      "sl": 66397.5,
+      "tp1": 66085.5,
+      "tp2": 65708,
+      "tp3": 65633,
+      "rr1": 1.89,
+      "rr2": 5.38,
+      "rr3": 6.08,
+      "qty": 185,
       "invalidation": 66099.5,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1781706343205,
-      "enteredAt": 1781711700000,
-      "stage": 0,
-      "stop": 65821.224,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1781712643808
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -221,8 +217,40 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781705700000
+    },
+    {
+      "id": "1781706343205-7qnes",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 65713,
+      "zoneHigh": 65756,
+      "entry": 65734.5,
+      "sl": 65821.224,
+      "tp1": 65604.41399999999,
+      "tp2": 65123.25,
+      "tp3": 65000,
+      "rr1": 1.5,
+      "rr2": 7.048221945482059,
+      "rr3": 8.469397168027111,
+      "invalidation": 66099.5,
+      "trigger": "PENDING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781706343205,
+      "enteredAt": 1781711700000,
+      "stage": 0,
+      "stop": 65821.224,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 65821.22,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781712000000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T16:05:40.805Z"
+  "updatedAt": "2026-06-17T16:10:43.808Z"
 }

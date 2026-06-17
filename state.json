@@ -1,34 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1781706666430-ao8u1",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 65713,
-      "zoneHigh": 65756,
-      "entry": 65734.5,
-      "sl": 65821.223,
-      "tp1": 65604.4155,
-      "tp2": 65123.25,
-      "tp3": 65000,
-      "rr1": 1.5,
-      "rr2": 7.048303218292877,
-      "rr3": 8.469494828361746,
-      "invalidation": 66099.5,
-      "trigger": "PENDING",
-      "claude": "Grade A fresh FVG in aligned bearish bias, strong R:R ratios (1:1.50 to 1:8.47), tight SL (0.13%), entry reachable from current price, optimal session timing, and clear invalidation level at 66099.50.",
-      "createdAt": 1781706666430,
-      "enteredAt": 1781711700000,
-      "stage": 0,
-      "stop": 65821.223,
-      "realizedR": 0,
-      "remaining": 1
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -123,8 +95,40 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781705700000
+    },
+    {
+      "id": "1781706666430-ao8u1",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 65713,
+      "zoneHigh": 65756,
+      "entry": 65734.5,
+      "sl": 65821.223,
+      "tp1": 65604.4155,
+      "tp2": 65123.25,
+      "tp3": 65000,
+      "rr1": 1.5,
+      "rr2": 7.048303218292877,
+      "rr3": 8.469494828361746,
+      "invalidation": 66099.5,
+      "trigger": "PENDING",
+      "claude": "Grade A fresh FVG in aligned bearish bias, strong R:R ratios (1:1.50 to 1:8.47), tight SL (0.13%), entry reachable from current price, optimal session timing, and clear invalidation level at 66099.50.",
+      "createdAt": 1781706666430,
+      "enteredAt": 1781711700000,
+      "stage": 0,
+      "stop": 65821.223,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 65821.22,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781712000000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-17T16:05:40.804Z"
+  "updatedAt": "2026-06-17T16:10:43.510Z"
 }
