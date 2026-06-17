@@ -11,6 +11,27 @@
 
   const TF_SEC = { '4h': 14400, '1h': 3600, '15m': 900, '5m': 300 };
 
+  // ── Delta Exchange India contract specs (verified via GET /v2/products) ───────
+  // On Delta, order "Quantity" is a WHOLE number of CONTRACTS (lots). 1 BTCUSD
+  // contract = 0.001 BTC; price moves in 0.5 ticks. Vanilla P&L = qty × value ×
+  // price_move, so the loss at the stop = qty × value × |entry-sl|.
+  const CONTRACTS = {
+    BTCUSD: { value: 0.001, tick: 0.5,    unit: 'BTC' },
+    ETHUSD: { value: 0.01,  tick: 0.05,   unit: 'ETH' },
+    SOLUSD: { value: 1,     tick: 0.0001, unit: 'SOL' },
+  };
+  const contractSpec = sym => CONTRACTS[sym] || CONTRACTS.BTCUSD;
+  // Round a price to the symbol's valid Delta tick.
+  function roundTick(sym, px) {
+    const t = contractSpec(sym).tick;
+    return Math.round(px / t) * t;
+  }
+  // Whole-contract quantity to risk `riskUSD` over the entry→stop distance.
+  function contractQty(sym, entry, sl, riskUSD) {
+    const lossPer = Math.abs(entry - sl) * contractSpec(sym).value;
+    return lossPer > 0 ? Math.max(1, Math.round(riskUSD / lossPer)) : 0;
+  }
+
   // ── Data fetch ──────────────────────────────────────────────────────────────
   async function fetchOHLCV(sym, res, count) {
     const sec = TF_SEC[res];
@@ -388,7 +409,8 @@
     return analyze(sym, { d4h, d1h, d15m, d5m }, { lb, mode });
   }
 
-  return { TF_SEC, fetchOHLCV, pivots, bias, eqLevel, choch, avgBody, fvgStat, hasSweep,
+  return { TF_SEC, CONTRACTS, contractSpec, roundTick, contractQty,
+           fetchOHLCV, pivots, bias, eqLevel, choch, avgBody, fvgStat, hasSweep,
            detectFVGs, grade, equalLevels, psychLevel, liqLevels, calcSL, orderTPs, calcTPs,
            calcSLScalp, calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp, analyze,
            entryTrigger, trigLabel, computeAlgo };

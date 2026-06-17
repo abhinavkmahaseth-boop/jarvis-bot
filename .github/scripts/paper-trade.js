@@ -12,9 +12,11 @@ const fs = require('fs');
 const path = require('path');
 const ENGINE = require('../../engine.js');
 const { verifyTrade } = require('../../claude.js');
+const NOTIFY = require('../../notify.js');
 
 const TG_TOKEN   = process.env.TG_TOKEN;
 const TG_CHAT    = process.env.TG_CHAT_ID;
+const DISCORD    = process.env.DISCORD_WEBHOOK || '';
 const CLAUDE_KEY = process.env.CLAUDE_API_KEY || '';
 const SYM        = 'BTCUSD';
 const ALGO_MODE  = 'scalp';
@@ -45,6 +47,13 @@ const BOOKS = {
 
 const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const now = () => Date.now();
+// Delta-style position size line: whole contracts + the BTC size + notional it implies.
+function qtyInfo(t) {
+  const qty = t.qty ?? ENGINE.contractQty(t.sym || SYM, t.entry, t.sl, R_DOLLAR);
+  const spec = ENGINE.contractSpec(t.sym || SYM);
+  const size = qty * spec.value, notional = size * t.entry;
+  return `📦 Qty <b>${qty}</b> contracts  (${size.toFixed(3)} ${spec.unit} · $${F(notional)} notional · ${(notional / ACCOUNT).toFixed(1)}x)`;
+}
 
 function loadState(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
@@ -52,16 +61,10 @@ function loadState(file) {
 }
 function saveState(s, file) { s.updatedAt = new Date().toISOString(); fs.writeFileSync(file, JSON.stringify(s, null, 2)); }
 
+// Fan out an alert to every configured channel (Discord and/or Telegram).
 async function tg(text) {
-  if (!TG_TOKEN || !TG_CHAT) { console.log('[tg skipped]', text.replace(/<[^>]+>/g, '')); return; }
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: 'HTML' }),
-    });
-    const j = await r.json();
-    if (!j.ok) console.error('Telegram:', j.description);
-  } catch (e) { console.error('Telegram error:', e.message); }
+  const sent = await NOTIFY.notify(text, { discord: DISCORD, tgToken: TG_TOKEN, tgChat: TG_CHAT });
+  if (!sent.length) console.log('[notify skipped — no channel]', NOTIFY.plain(text));
 }
 
 const equityOf = s => s.startEquity + s.closed.reduce((a, t) => a + (t.pnl || 0), 0);
@@ -209,6 +212,7 @@ async function runBook(cfg, data, c5) {
         await tg(
           `🟢 <b>ENTRY — BTC ${p.dir}</b> (paper)\n` +
           `Filled <b>${F(p.entry)}</b>  ·  SL ${F(p.sl)} (${slPct}%)  ·  risk $${F(R_DOLLAR)} (2%)\n` +
+          `${qtyInfo(p)}\n` +
           `TP1 ${F(p.tp1)} → book 50%, SL→BE · runner trails to TP3 ${F(p.tp3)}`
         );
       }
@@ -234,13 +238,20 @@ async function runBook(cfg, data, c5) {
       if (!v.approved) { console.log(`  [${cfg.label}] Claude REJECTED ${dir} ${s.entry}: ${v.reason}`); continue; }
       note = v.reason;
     }
+    // Snap all levels to Delta's valid tick and recompute R from the rounded levels,
+    // so the trade is exactly what you'd place on Delta. Quantity = whole contracts.
+    const tk = px => ENGINE.roundTick(SYM, px);
+    const entry = tk(s.entry), sl = tk(s.sl), tp1 = tk(s.tps[0].p), tp2 = tk(s.tps[1].p), tp3 = tk(s.tps[2].p);
+    const riskR = Math.abs(entry - sl) || entry * 0.001;
+    const rrAt = px => +((s.lng ? px - entry : entry - px) / riskR).toFixed(2);
     const p = {
       id: `${now()}-${Math.random().toString(36).slice(2, 7)}`,
       sym: SYM, dir, lng: s.lng, grade: s.fvg.grade, tf: s.fvg.tf,
-      zoneLow: s.fvg.gL, zoneHigh: s.fvg.gH, entry: s.entry, sl: s.sl,
-      tp1: s.tps[0].p, tp2: s.tps[1].p, tp3: s.tps[2].p,
-      rr1: s.tps[0].rr, rr2: s.tps[1].rr, rr3: s.tps[2].rr,
-      invalidation: s.invalidation, trigger: s.trigger, claude: note, createdAt: now(),
+      zoneLow: tk(s.fvg.gL), zoneHigh: tk(s.fvg.gH), entry, sl,
+      tp1, tp2, tp3, rr1: rrAt(tp1), rr2: rrAt(tp2), rr3: rrAt(tp3),
+      qty: ENGINE.contractQty(SYM, entry, sl, R_DOLLAR),     // Delta contracts for 1R ($20)
+      invalidation: s.invalidation != null ? tk(s.invalidation) : s.invalidation,
+      trigger: s.trigger, claude: note, createdAt: now(),
     };
     state.pending.push(p);
     if (cfg.pings === 'full') {
@@ -251,6 +262,7 @@ async function runBook(cfg, data, c5) {
         `📍 Entry <b>${F(p.entry)}</b>  (zone ${F(p.zoneLow)}–${F(p.zoneHigh)})\n` +
         `🛑 SL ${F(p.sl)} (${slPct}%)\n` +
         `🎯 TP1 ${F(p.tp1)} · TP2 ${F(p.tp2)} · TP3 ${F(p.tp3)}\n` +
+        `${qtyInfo(p)}\n` +
         (p.invalidation != null ? `🧱 Void if closes ${p.lng ? 'below' : 'above'} ${F(p.invalidation)}\n` : '') +
         `🤖 <i>${p.claude}</i>\n<i>Paper · waiting for entry tap…</i>`
       );

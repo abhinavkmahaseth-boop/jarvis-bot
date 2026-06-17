@@ -22,6 +22,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           REPORT_MODE: swing
           REPORT_SYMS: BTCUSD,SOLUSD,ETHUSD
@@ -39,6 +40,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           REPORT_MODE: scalp
           REPORT_SYMS: BTCUSD,SOLUSD,ETHUSD

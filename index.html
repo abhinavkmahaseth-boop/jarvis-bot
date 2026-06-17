@@ -532,7 +532,21 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         </div>
       </div>
       <div class="settings-card">
-        <div class="sc-title">Telegram Alerts</div>
+        <div class="sc-title">💬 Discord Alerts</div>
+        <div class="sc-field">
+          <label class="sc-label">Webhook URL</label>
+          <input type="password" id="discord-webhook" class="sc-input" placeholder="https://discord.com/api/webhooks/…" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem">
+          <button class="btn btn-save" style="padding:8px 18px" onclick="saveDiscordSettings()">Save</button>
+          <button class="btn btn-algo" style="padding:8px 18px" onclick="testDiscordAlert()">Send Test</button>
+        </div>
+        <div class="key-ok" id="discord-status" style="margin-top:.4rem"></div>
+        <span class="sc-desc" style="margin-top:.5rem;display:block">In Discord: a server channel → <b>Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL</b> → paste above.<br>For the automated alerts, also add it as a GitHub repo secret named <b>DISCORD_WEBHOOK</b>.</span>
+      </div>
+
+      <div class="settings-card">
+        <div class="sc-title">Telegram Alerts <span style="font-weight:400;color:var(--text3);font-size:9px">· optional / backup</span></div>
         <div class="sc-field">
           <label class="sc-label">Bot Token</label>
           <input type="password" id="tg-token" class="sc-input" placeholder="1234567890:ABCdef…" autocomplete="off">
@@ -726,12 +740,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 
 <script src="engine.js"></script>
 <script src="claude.js"></script>
+<script src="notify.js"></script>
 <script>
 // ── SMC engine (shared with the cron — single source of truth in engine.js) ──
 const {
   fetchOHLCV, pivots, bias, eqLevel, choch, avgBody, fvgStat, hasSweep, detectFVGs,
   grade, equalLevels, psychLevel, liqLevels, calcSL, orderTPs, calcTPs, calcSLScalp,
-  calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp, entryTrigger, trigLabel
+  calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp, entryTrigger, trigLabel,
+  contractSpec, roundTick, contractQty
 } = JARVIS_ENGINE;
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -771,6 +787,12 @@ function _pDate(ms) {
   return new Date(ms).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true });
 }
 // ── Exit-detail helpers for the closed-trades table ───────────────────────────
+// Delta-style quantity for a trade: whole contracts (+ size) for the account's $ risk.
+function _qtyCell(t, rDollar) {
+  const sym = t.sym || 'BTCUSD', spec = contractSpec(sym);
+  const q = t.qty ?? contractQty(sym, t.entry, (t.sl ?? t.stop), rDollar);
+  return `<b>${q}</b><span style="color:var(--text3)"> (${(q * spec.value).toFixed(3)} ${spec.unit})</span>`;
+}
 function _exitPrice(t) {
   if (t.exitPrice != null) return t.exitPrice;
   // derive for legacy trades recorded before exitPrice was stored
@@ -876,14 +898,14 @@ async function _renderPaperBook(url, elId, opts) {
   const openRows = open.map(t => {
     const slRef = t.sl ?? t.stop;
     const pnlCell = `<td class="opos-pnl" data-sym="${esc(t.sym || 'BTCUSD')}" data-entry="${t.entry}" data-sl="${slRef}" data-lng="${t.lng ? 1 : 0}" data-rz="${t.realizedR || 0}" data-rem="${t.remaining ?? 1}" data-rd="${rDollar}" style="padding:.35rem .5rem;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap"><span style="color:var(--text3)">…</span></td>`;
-    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${pnlCell}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`;
+    return `<tr>${td(dirBadge(t.dir))}${td('G'+esc(t.grade))}${td(F(t.entry))}${td(_qtyCell(t, rDollar))}${td(F(t.stop??t.sl))}${td('stage '+esc(t.stage??0))}${pnlCell}${td(F(t.tp1)+' / '+F(t.tp2)+' / '+F(t.tp3))}${td(_pDate(t.enteredAt))}</tr>`;
   });
-  h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Stop','Stage','Live P&L','TP1 / TP2 / TP3','Opened']);
+  h += tbl(`🟢 Open positions (${open.length})`, openRows, ['Dir','Grade','Entry','Qty','Stop','Stage','Live P&L','TP1 / TP2 / TP3','Opened']);
 
   // PENDING (label differs: Claude reason vs auto note)
-  const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+esc(p.grade))}${td(F(p.entry))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(esc(p.claude||''), 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
+  const pendRows = pending.map(p => `<tr>${td(dirBadge(p.dir))}${td('G'+esc(p.grade))}${td(F(p.entry))}${td(_qtyCell(p, rDollar))}${td(F(p.zoneLow)+'–'+F(p.zoneHigh))}${td(esc(p.claude||''), 'var(--text3)')}${td(_pDate(p.createdAt))}</tr>`);
   const pendTitle = isClaude ? `🎯 Pending — Claude-approved, awaiting entry (${pending.length})` : `🎯 Pending — awaiting entry tap (${pending.length})`;
-  h += tbl(pendTitle, pendRows, ['Dir','Grade','Entry','Zone', isClaude ? 'Claude' : 'Note', 'Since']);
+  h += tbl(pendTitle, pendRows, ['Dir','Grade','Entry','Qty','Zone', isClaude ? 'Claude' : 'Note', 'Since']);
 
   // CLOSED (most recent first) — show exit price + plain-English reason + held time
   const closedRows = [...closed].reverse().map(t => {
@@ -895,7 +917,7 @@ async function _renderPaperBook(url, elId, opts) {
   });
   h += tbl(`🏁 Closed trades (${closed.length})`, closedRows, ['Dir','Grade','Entry','Exit @','How it exited','R','P&L','Exited']);
 
-  h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · live P&L from real-time price · table data may lag ~5 min (GitHub CDN)</div>`;
+  h += `<div style="font-size:10px;color:var(--text3);margin-top:.5rem">Sizing per Delta India — qty = whole contracts (1 BTC contract = 0.001 BTC) for $${F(rDollar)} risk (2%) · prices on 0.5 tick<br>Source: paper-data branch · updated ${s.updatedAt ? _pDate(new Date(s.updatedAt).getTime()) : '—'} · live P&L from real-time price · table data may lag ~5 min (GitHub CDN)</div>`;
   el.innerHTML = h;
   _tickPaperPnl();                                  // paint immediately
   if (!window._paperPnlTimer) window._paperPnlTimer = setInterval(_tickPaperPnl, 1500);  // then tick live
@@ -1485,19 +1507,37 @@ async function fetchTgChatId() {
   }
 }
 
+function getDiscordWebhook() { return localStorage.getItem('discord_webhook') || ''; }
+function saveDiscordSettings() {
+  const url = document.getElementById('discord-webhook')?.value.trim();
+  const st = document.getElementById('discord-status');
+  if (!url) { if (st) { st.textContent = '⚠ Enter a webhook URL first'; st.style.color = '#f5b800'; } return; }
+  if (url.includes('…')) { if (st) { st.textContent = '✓ Webhook already saved'; st.style.color = 'var(--green)'; } return; }
+  if (!/^https:\/\/(discord|discordapp)\.com\/api\/webhooks\//.test(url)) { if (st) { st.textContent = '✗ Not a Discord webhook URL'; st.style.color = 'var(--red)'; } return; }
+  localStorage.setItem('discord_webhook', url);
+  if (st) { st.textContent = '✓ Saved'; st.style.color = 'var(--green)'; }
+}
+async function testDiscordAlert() {
+  const st = document.getElementById('discord-status');
+  const url = getDiscordWebhook();
+  if (!url) { if (st) { st.textContent = '⚠ Save a webhook URL first'; st.style.color = '#f5b800'; } return; }
+  if (st) { st.textContent = '⏳ Sending…'; st.style.color = 'var(--text2)'; }
+  let ok = false;
+  try { ok = await JARVIS_NOTIFY.sendDiscord(url, '🤖 <b>JARVIS</b> — Test alert! Discord alerts are working ✅'); } catch (_) {}
+  if (st) { st.textContent = ok ? '✓ Sent — check your Discord channel' : '✗ Failed — check the webhook URL'; st.style.color = ok ? 'var(--green)' : 'var(--red)'; }
+}
+function loadDiscordSettingsUI() {
+  const url = getDiscordWebhook();
+  if (url) { const el = document.getElementById('discord-webhook'); if (el) el.value = url.slice(0, 40) + '…'; }
+}
+
+// Fan out an alert to every configured channel (Discord and/or Telegram).
+// Kept the name sendTelegramAlert so existing call-sites are untouched.
 async function sendTelegramAlert(text) {
-  const token  = getTgToken();
-  const chatId = getTgChatId();
-  if (!token || !chatId) return false;
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
-    });
-    const j = await r.json();
-    return j.ok === true;
-  } catch { return false; }
+  const sent = await JARVIS_NOTIFY.notify(text, {
+    discord: getDiscordWebhook(), tgToken: getTgToken(), tgChat: getTgChatId(),
+  });
+  return sent.length > 0;
 }
 
 async function testTgAlert() {
@@ -2164,6 +2204,7 @@ async function testClaudeVerification() {
 
 buildUI();
 loadTgSettingsUI();
+loadDiscordSettingsUI();
 loadClaudeSettingsUI();
 loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();

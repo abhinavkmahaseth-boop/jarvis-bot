@@ -115,5 +115,15 @@ const mkT = o => Object.assign({ sym:'BTCUSD', dir:'LONG', lng:true, entry:100, 
   ok(done && done.exitReason === 'SL' && approx(done.totalR, -1), 'replay: real SL on settled data → -1R', done && `${done.exitReason} ${done.totalR}R`);
 }
 
+// ── Delta contract quantity + tick (keep sizing in line with the exchange) ────
+{
+  ok(ENGINE.contractSpec('BTCUSD').value === 0.001 && ENGINE.contractSpec('BTCUSD').tick === 0.5, 'BTCUSD spec = 0.001 BTC / 0.5 tick');
+  ok(ENGINE.contractQty('BTCUSD', 65000, 64900, 20) === 200, 'BTC qty: $20 / (100 × 0.001) = 200 contracts', String(ENGINE.contractQty('BTCUSD', 65000, 64900, 20)));
+  ok(ENGINE.contractQty('BTCUSD', 65909.5, 65816.01, 20) === 214, 'BTC qty real trade = 214 contracts', String(ENGINE.contractQty('BTCUSD', 65909.5, 65816.01, 20)));
+  ok(ENGINE.roundTick('BTCUSD', 65816.0055) === 65816 && ENGINE.roundTick('BTCUSD', 65816.3) === 65816.5, 'roundTick snaps to 0.5');
+  ok(ENGINE.contractQty('ETHUSD', 2600, 2590, 20) === 200 && ENGINE.contractQty('SOLUSD', 150, 148, 20) === 10, 'ETH/SOL qty use their own contract value');
+  ok(Number.isFinite(ENGINE.contractQty('BTCUSD', 100, 100, 20)), 'zero stop distance → finite qty (no divide-by-zero)');
+}
+
 console.log(fails === 0 ? '\n✅ UNIT TESTS PASSED' : `\n❌ UNIT TESTS FAILED (${fails})`);
 process.exit(fails === 0 ? 0 : 1);

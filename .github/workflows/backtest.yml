@@ -33,6 +33,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           BT_DAYS: ${{ github.event.inputs.days }}
           BT_OUT: ${{ github.workspace }}/backtest.json
         run: node .github/scripts/backtest.js

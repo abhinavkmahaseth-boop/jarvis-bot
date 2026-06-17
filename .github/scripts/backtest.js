@@ -12,7 +12,8 @@ const { applyBar, R_DOLLAR } = require('./paper-trade.js');
 const SYM   = 'BTCUSD';
 const DAYS  = parseInt(process.env.BT_DAYS || process.argv[2] || '60', 10);
 const GRADE = 'A';
-const TG_TOKEN = process.env.TG_TOKEN, TG_CHAT = process.env.TG_CHAT_ID;
+const TG_TOKEN = process.env.TG_TOKEN, TG_CHAT = process.env.TG_CHAT_ID, DISCORD = process.env.DISCORD_WEBHOOK || '';
+const NOTIFY = require('../../notify.js');
 const OUT   = process.env.BT_OUT || path.join(process.cwd(), 'backtest.json');
 const STALE_MS = 6 * 3600 * 1000, COOLDOWN_MS = 2 * 3600 * 1000, ZONE_TOL = 0.0015, WARM = 120;
 const F = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -36,9 +37,8 @@ async function fetchHistory(sym, res, days) {
 }
 
 async function tg(text) {
-  if (!TG_TOKEN || !TG_CHAT) { console.log('[tg]', text.replace(/<[^>]+>/g, '')); return; }
-  try { await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: 'HTML' }) }); }
-  catch (e) { console.error('tg', e.message); }
+  const ok = await NOTIFY.notify(text, { discord: DISCORD, tgToken: TG_TOKEN, tgChat: TG_CHAT });
+  if (!ok.length) console.log('[notify]', NOTIFY.plain(text));
 }
 
 (async () => {

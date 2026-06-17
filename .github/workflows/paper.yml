@@ -52,6 +52,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           STATE_FILE: ${{ github.workspace }}/state.json
           ALGO_STATE_FILE: ${{ github.workspace }}/state-algo.json

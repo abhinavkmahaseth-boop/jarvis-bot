@@ -3,6 +3,7 @@
 
 const TG_TOKEN = process.env.TG_TOKEN;
 const TG_CHAT  = process.env.TG_CHAT_ID;
+const DISCORD  = process.env.DISCORD_WEBHOOK || '';
 const CLAUDE_KEY = process.env.CLAUDE_API_KEY || '';
 const MODE     = process.env.REPORT_MODE || 'swing';
 const SYMS     = (process.env.REPORT_SYMS || 'BTCUSD,SOLUSD,ETHUSD').split(',');
@@ -77,20 +78,16 @@ async function verifySetups(sym, data) {
 }
 
 // ── Send ──────────────────────────────────────────────────────────────────────
+const NOTIFY = require('../../notify.js');
 async function sendTg(text) {
-  const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: 'HTML' }),
-  });
-  const j = await r.json();
-  if (!j.ok) throw new Error(`Telegram: ${j.description}`);
+  const ok = await NOTIFY.notify(text, { discord: DISCORD, tgToken: TG_TOKEN, tgChat: TG_CHAT });
+  if (!ok.length) throw new Error('no alert channel delivered');
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  if (!TG_TOKEN || !TG_CHAT) {
-    console.error('Missing TG_TOKEN or TG_CHAT_ID');
+  if (!DISCORD && !(TG_TOKEN && TG_CHAT)) {
+    console.error('No alert channel configured (set DISCORD_WEBHOOK, or TG_TOKEN + TG_CHAT_ID)');
     process.exit(1);
   }
 
