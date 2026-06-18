@@ -1,35 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1781777751156-ub65g",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "B",
-      "tf": "5M",
-      "zoneLow": 64179.5,
-      "zoneHigh": 64215.5,
-      "entry": 64197.5,
-      "sl": 64279.5,
-      "tp1": 63888.5,
-      "tp2": 63836.5,
-      "tp3": 63667,
-      "rr1": 3.77,
-      "rr2": 4.4,
-      "rr3": 6.47,
-      "qty": 244,
-      "invalidation": 64786.5,
-      "trigger": "CONFIRMED",
-      "claude": "Bearish multi-timeframe alignment, fresh B-grade FVG with confirmed lower-TF entry trigger, excellent R:R of 1:3.77+, tight SL (0.13%) appropriate for scalp mode, entry reachable from current price, clear invalidation level, and optimal session timing.",
-      "createdAt": 1781777751157,
-      "enteredAt": 1781780100000,
-      "stage": 1,
-      "stop": 64197.5,
-      "realizedR": 1.885,
-      "remaining": 0.5
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -255,8 +226,41 @@
       "totalR": 3.43,
       "pnl": 68.6,
       "closedAt": 1781777100000
+    },
+    {
+      "id": "1781777751156-ub65g",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "B",
+      "tf": "5M",
+      "zoneLow": 64179.5,
+      "zoneHigh": 64215.5,
+      "entry": 64197.5,
+      "sl": 64279.5,
+      "tp1": 63888.5,
+      "tp2": 63836.5,
+      "tp3": 63667,
+      "rr1": 3.77,
+      "rr2": 4.4,
+      "rr3": 6.47,
+      "qty": 244,
+      "invalidation": 64786.5,
+      "trigger": "CONFIRMED",
+      "claude": "Bearish multi-timeframe alignment, fresh B-grade FVG with confirmed lower-TF entry trigger, excellent R:R of 1:3.77+, tight SL (0.13%) appropriate for scalp mode, entry reachable from current price, clear invalidation level, and optimal session timing.",
+      "createdAt": 1781777751157,
+      "enteredAt": 1781780100000,
+      "stage": 1,
+      "stop": 64197.5,
+      "realizedR": 1.885,
+      "remaining": 0,
+      "exitReason": "BE",
+      "exitPrice": 64197.5,
+      "totalR": 1.89,
+      "pnl": 37.8,
+      "closedAt": 1781785800000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T12:35:36.027Z"
+  "updatedAt": "2026-06-18T12:40:59.593Z"
 }
