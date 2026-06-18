@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781759141154-r6w76",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "B",
+      "tf": "5M",
+      "zoneLow": 64130,
+      "zoneHigh": 64176.5,
+      "entry": 64153.5,
+      "sl": 64240,
+      "tp1": 63845.5,
+      "tp2": 63802.5,
+      "tp3": 63750.5,
+      "rr1": 3.56,
+      "rr2": 4.06,
+      "rr3": 4.66,
+      "qty": 231,
+      "invalidation": 66424,
+      "trigger": "CONFIRMED",
+      "claude": "Strong R:R (1:3.54+), fresh B-grade FVG with confirmed lower-TF trigger, tight SL (0.14%), aligned multi-timeframe bias, and Asian session supports volatility for scalp execution.",
+      "createdAt": 1781759141154
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -163,5 +187,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T05:01:07.127Z"
+  "updatedAt": "2026-06-18T05:05:41.657Z"
 }
