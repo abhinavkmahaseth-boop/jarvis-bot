@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781755271148-5ul5p",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 64507.5,
+      "zoneHigh": 64644.5,
+      "entry": 64576,
+      "sl": 64709,
+      "tp1": 64036.5,
+      "tp2": 63888.5,
+      "tp3": 63809,
+      "rr1": 4.06,
+      "rr2": 5.17,
+      "rr3": 5.77,
+      "qty": 150,
+      "invalidation": 66424,
+      "trigger": "CONFIRMED",
+      "claude": "auto · no Claude",
+      "createdAt": 1781755271148
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -327,5 +351,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T03:55:33.739Z"
+  "updatedAt": "2026-06-18T04:01:11.148Z"
 }
