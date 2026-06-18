@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1781748646801-1tj2r",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 64534,
       "trigger": "AWAITING",
       "claude": "auto · no Claude",
-      "createdAt": 1781748646801
+      "createdAt": 1781748646801,
+      "enteredAt": 1781749200000,
+      "stage": 0,
+      "stop": 64473,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -318,5 +323,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T02:20:43.020Z"
+  "updatedAt": "2026-06-18T02:30:58.796Z"
 }
