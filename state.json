@@ -24,10 +24,10 @@
       "claude": "Bearish multi-timeframe alignment, fresh B-grade FVG with confirmed lower-TF entry trigger, excellent R:R of 1:3.77+, tight SL (0.13%) appropriate for scalp mode, entry reachable from current price, clear invalidation level, and optimal session timing.",
       "createdAt": 1781777751157,
       "enteredAt": 1781780100000,
-      "stage": 0,
-      "stop": 64279.5,
-      "realizedR": 0,
-      "remaining": 1
+      "stage": 1,
+      "stop": 64197.5,
+      "realizedR": 1.885,
+      "remaining": 0.5
     }
   ],
   "closed": [
@@ -258,5 +258,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T11:25:37.831Z"
+  "updatedAt": "2026-06-18T11:30:56.930Z"
 }
