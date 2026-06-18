@@ -363,6 +363,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         <path d="M12 2v4"/><path d="M12 18v4"/><circle cx="12" cy="12" r="4"/><path d="M4.9 4.9l2.1 2.1"/><path d="M17 17l2.1 2.1"/></svg>
       Paper · Auto
     </div>
+    <div class="nav-link" data-page="live" onclick="nav('live')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+      Live · Delta
+    </div>
     <div class="nav-link" data-page="backtest" onclick="nav('backtest')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
         <path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>
@@ -497,6 +502,17 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       </div>
     </div>
     <div id="paper-algo-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load auto paper trades…</div></div>
+  </div>
+
+  <!-- Live execution (Delta India, real orders) -->
+  <div class="page" id="page-live">
+    <div class="page-hd">
+      <span class="page-hd-title">Live · Delta India <span style="font-size:11px;color:var(--text3);font-weight:400">· real orders · algo book · 1 lot (0.001 BTC)</span></span>
+      <div class="page-hd-actions">
+        <button class="btn btn-dl" onclick="renderLive()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="live-body"><div style="padding:2rem;text-align:center;color:var(--text3)">Open this tab to load live execution status…</div></div>
   </div>
 
   <!-- Backtest -->
@@ -793,6 +809,7 @@ function nav(page) {
   if (page === 'journal') renderJournal();
   if (page === 'paper') renderPaper();
   if (page === 'paper-algo') renderPaperAlgo();
+  if (page === 'live') renderLive();
   if (page === 'backtest') renderBacktest();
 }
 
@@ -869,6 +886,64 @@ const PAPER_ALGO_URL = 'https://raw.githubusercontent.com/abhinavkmahaseth-boop/
 // labels (Claude reason vs auto note). url + elId pick which book.
 async function renderPaper()     { return _renderPaperBook(PAPER_STATE_URL, 'paper-body',      { isClaude: true  }); }
 async function renderPaperAlgo()  { return _renderPaperBook(PAPER_ALGO_URL,  'paper-algo-body', { isClaude: false }); }
+
+// ── Live execution viewer (Delta) — reads the algo book's live status + order log ──
+async function renderLive() {
+  const el = document.getElementById('live-body');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3)">Loading live status…</div>';
+  let s;
+  try { const r = await fetch(`${PAPER_ALGO_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); s = await r.json(); }
+  catch (e) { el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text3)">No live data yet.<br><span style="font-size:11px">Appears after the first monitor run commits state. (${esc(e.message)})</span></div>`; return; }
+  const lv = s.live || { armed: false, keysSet: false, maxLots: 1 };
+  const armed = !!lv.armed;
+  const dirBadge = d => `<b style="color:${d === 'LONG' ? 'var(--green)' : 'var(--red)'}">${esc(d)}</b>`;
+  const livePending = (s.pending || []).filter(p => p.liveOrderId);
+  const liveOpen = (s.open || []).filter(t => t.liveOrderId);
+
+  // Status header
+  let h = `<div style="background:${armed ? 'rgba(240,85,107,.07)' : 'var(--bg2)'};border:1px solid ${armed ? 'rgba(240,85,107,.45)' : 'var(--border)'};border-radius:12px;padding:1rem 1.1rem;margin-bottom:1.1rem">
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+      <span style="font-size:18px;font-weight:700;color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 ARMED' : '⚪ OFF'}</span>
+      <span style="font-size:12px;color:var(--text2)">Delta India · algo book · ${lv.maxLots || 1} lot max (0.001 BTC) · arm-and-auto</span>
+    </div>
+    <div style="font-size:12px;color:${armed ? 'var(--red)' : 'var(--text3)'};margin-top:.4rem">${armed ? 'Real 1-lot orders are placed automatically on algo signals.' : 'Paper only — no real orders are being placed.'}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:.3rem">Keys: ${lv.keysSet ? '<span style="color:var(--green)">set</span>' : '<span style="color:var(--red)">not set</span>'} · master switch <b>LIVE_TRADING=${armed ? 'on' : 'off'}</b> · updated ${lv.updatedAt ? _pDate(new Date(lv.updatedAt).getTime()) : '—'}</div>
+  </div>`;
+
+  // Not armed → inline arm guide
+  if (!armed) {
+    h += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1.1rem;font-size:12px;color:var(--text2);line-height:1.8">
+      <b style="color:var(--text)">To go live — 3 steps in GitHub:</b><br>
+      <b>1</b> · Delta → API Keys → new key with <b>Trading ON / Withdrawals OFF</b><br>
+      <b>2</b> · Repo Settings → Secrets → add <b>DELTA_API_KEY</b> + <b>DELTA_API_SECRET</b><br>
+      <b>3</b> · Variables tab → add <b>LIVE_TRADING = on</b><br>
+      <span style="color:var(--text3)">🧯 Kill: set LIVE_TRADING=off. Full guide in Settings → Live Execution.</span></div>`;
+  }
+
+  // Active live order (resting pending / open position with a Delta order)
+  const td = (v, c) => `<td style="padding:.4rem .6rem;border-bottom:1px solid var(--border)${c ? ';color:' + c : ''}">${v}</td>`;
+  const th = x => `<th style="padding:.4rem .6rem;font-weight:500;border-bottom:1px solid var(--border);text-align:left">${x}</th>`;
+  if (livePending.length || liveOpen.length) {
+    const rows = [
+      ...liveOpen.map(t => `<tr>${td('<b style="color:var(--green)">OPEN</b>')}${td(dirBadge(t.dir))}${td('1 lot')}${td(F(t.entry))}${td(F(t.stop ?? t.sl))}${td(F(t.tp1))}</tr>`),
+      ...livePending.map(p => `<tr>${td('<span style="color:var(--amber)">RESTING</span>')}${td(dirBadge(p.dir))}${td('1 lot')}${td(F(p.entry))}${td(F(p.sl))}${td(F(p.tp1))}</tr>`),
+    ].join('');
+    h += `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">Active on Delta</div>
+      <div style="overflow-x:auto;margin-bottom:1.1rem"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--text3)">${['Status', 'Dir', 'Size', 'Entry', 'Stop', 'TP'].map(th).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  } else if (armed) {
+    h += `<div style="font-size:12px;color:var(--text3);margin-bottom:1.1rem">No live order active right now — flat, waiting for the next algo signal.</div>`;
+  }
+
+  // Order log
+  const evColor = e => e === 'PLACED' ? 'var(--green)' : e === 'ERROR' ? 'var(--red)' : e === 'FORCE-FLAT' ? 'var(--amber)' : 'var(--text2)';
+  const logRows = (lv.log || []).slice().reverse().map(e => `<tr>${td(_pDate(e.t))}${td(`<b style="color:${evColor(e.ev)}">${esc(e.ev)}</b>`)}${td(e.dir ? dirBadge(e.dir) : '—')}${td(e.entry != null ? F(e.entry) : '—')}${td(e.why ? esc(e.why) : (e.id != null ? '#' + esc(String(e.id)) : ''), 'var(--text3)')}</tr>`).join('');
+  h += `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">Live order log</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--text3)">${['Time', 'Event', 'Dir', 'Entry', 'Detail'].map(th).join('')}</tr></thead>
+    <tbody>${logRows || `<tr><td colspan="5" style="padding:.6rem;color:var(--text3)">No live orders yet.</td></tr>`}</tbody></table></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:.6rem">Source: paper-data branch · mirrors the Paper·Auto (algo) book · exits use a Delta bracket (SL + TP1) · data may lag ~5 min (CDN)</div>`;
+  el.innerHTML = h;
+}
+
 async function _renderPaperBook(url, elId, opts) {
   const isClaude = !!(opts && opts.isClaude);
   const el = document.getElementById(elId);
@@ -894,20 +969,14 @@ async function _renderPaperBook(url, elId, opts) {
   const pos = v => v >= 0 ? 'var(--green)' : 'var(--red)';
 
   // Live-execution banner (algo book only) — shows armed/disarmed + recent real orders.
+  // Compact pointer to the dedicated Live tab (algo book only).
   let liveBanner = '';
   if (!isClaude && s.live) {
-    const lv = s.live, armed = !!lv.armed;
-    const evColor = e => e === 'PLACED' ? 'var(--green)' : e === 'ERROR' ? 'var(--red)' : e === 'FORCE-FLAT' ? 'var(--amber)' : 'var(--text2)';
-    const logRows = (lv.log || []).slice(-6).reverse().map(e =>
-      `<div style="font-size:11px;padding:1px 0"><span style="color:var(--text3)">${_pDate(e.t)}</span> · <b style="color:${evColor(e.ev)}">${esc(e.ev)}</b> ${e.dir ? esc(e.dir) + ' ' : ''}${e.entry != null ? '@ ' + F(e.entry) : ''}${e.why ? '<span style="color:var(--text3)"> · ' + esc(e.why) + '</span>' : ''}</div>`
-    ).join('') || '<div style="font-size:11px;color:var(--text3)">No live orders yet.</div>';
-    liveBanner = `<div style="background:var(--bg);border:1px solid ${armed ? 'rgba(240,85,107,.45)' : 'var(--border)'};border-radius:8px;padding:.7rem .9rem;margin-bottom:1rem">
-      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <span style="font-size:13px;font-weight:700;color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 LIVE EXECUTION: ARMED' : '⚪ Live execution: OFF (paper only)'}</span>
-        <span style="font-size:11px;color:var(--text3)">Delta India · ${lv.maxLots || 1} lot max · ${lv.keysSet ? 'keys set' : 'no keys'} · arm-and-auto</span>
-      </div>
-      <div style="font-size:11px;color:${armed ? 'var(--red)' : 'var(--text3)'};margin-top:.3rem">${armed ? 'Real 1-lot orders are being placed on Delta for algo signals.' : 'No real orders. Arm in Settings → Live Execution (Delta).'}</div>
-      <div style="margin-top:.5rem;border-top:1px solid var(--border);padding-top:.4rem">${logRows}</div>
+    const armed = !!s.live.armed;
+    liveBanner = `<div onclick="nav('live')" style="cursor:pointer;background:${armed ? 'rgba(240,85,107,.07)' : 'var(--bg)'};border:1px solid ${armed ? 'rgba(240,85,107,.4)' : 'var(--border)'};border-radius:8px;padding:.55rem .9rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 LIVE: ARMED' : '⚪ Live: OFF'}</span>
+      <span style="font-size:11px;color:var(--text3)">Delta · 1 lot · ${armed ? 'placing real orders' : 'paper only'} →</span>
+      <span style="font-size:11px;color:var(--accent);margin-left:auto">Open Live · Delta tab</span>
     </div>`;
   }
 
