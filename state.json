@@ -24,10 +24,10 @@
       "claude": "Grade A FVG with strong 1:2.82+ R:R, tight SL (0.21%), aligned bearish bias across timeframes, entry reachable within Asian session volatility, and clear invalidation level.",
       "createdAt": 1781768135609,
       "enteredAt": 1781770200000,
-      "stage": 0,
-      "stop": 64709,
-      "realizedR": 0,
-      "remaining": 1
+      "stage": 1,
+      "stop": 64576,
+      "realizedR": 1.405,
+      "remaining": 0.5
     }
   ],
   "closed": [
@@ -225,5 +225,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T09:35:35.294Z"
+  "updatedAt": "2026-06-18T09:40:45.280Z"
 }
