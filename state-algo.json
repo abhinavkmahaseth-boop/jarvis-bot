@@ -1,35 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1781809270042-6xujf",
+      "id": "1781811335416-eas9v",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "5M",
-      "zoneLow": 62695.5,
-      "zoneHigh": 62727,
-      "entry": 62711.5,
-      "sl": 62789.5,
-      "tp1": 62593.5,
+      "tf": "15M",
+      "zoneLow": 63361.5,
+      "zoneHigh": 63533.5,
+      "entry": 63447.5,
+      "sl": 63596.5,
+      "tp1": 62711.5,
       "tp2": 62265,
-      "tp3": 62218,
-      "rr1": 1.51,
-      "rr2": 5.72,
-      "rr3": 6.33,
-      "qty": 256,
+      "tp3": 62175.5,
+      "rr1": 4.94,
+      "rr2": 7.94,
+      "rr3": 8.54,
+      "qty": 134,
       "invalidation": 64786.5,
-      "trigger": "AWAITING",
+      "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1781809270042,
-      "enteredAt": 1781810700000,
-      "stage": 0,
-      "stop": 62789.5,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1781811335416
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -419,15 +414,48 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781786700000
+    },
+    {
+      "id": "1781809270042-6xujf",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "5M",
+      "zoneLow": 62695.5,
+      "zoneHigh": 62727,
+      "entry": 62711.5,
+      "sl": 62789.5,
+      "tp1": 62593.5,
+      "tp2": 62265,
+      "tp3": 62218,
+      "rr1": 1.51,
+      "rr2": 5.72,
+      "rr3": 6.33,
+      "qty": 256,
+      "invalidation": 64786.5,
+      "trigger": "AWAITING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781809270042,
+      "enteredAt": 1781810700000,
+      "stage": 0,
+      "stop": 62789.5,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 62789.5,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781810700000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T19:30:56.497Z",
+  "updatedAt": "2026-06-18T19:35:35.417Z",
   "live": {
     "armed": false,
     "maxLots": 1,
     "mode": "arm-and-auto",
     "keysSet": false,
-    "updatedAt": "2026-06-18T19:30:56.496Z"
+    "updatedAt": "2026-06-18T19:35:34.793Z"
   }
 }
