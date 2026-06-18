@@ -1,29 +1,5 @@
 {
-  "pending": [
-    {
-      "id": "1781722249854-k6ncb",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 66479.5,
-      "zoneHigh": 66516,
-      "entry": 66498,
-      "sl": 66582,
-      "tp1": 66313,
-      "tp2": 66085.5,
-      "tp3": 65775,
-      "rr1": 2.2,
-      "rr2": 4.91,
-      "rr3": 8.61,
-      "qty": 238,
-      "invalidation": 66099.5,
-      "trigger": "PENDING",
-      "claude": "auto · no Claude",
-      "createdAt": 1781722249854
-    }
-  ],
+  "pending": [],
   "open": [],
   "closed": [
     {
@@ -318,5 +294,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T00:50:46.915Z"
+  "updatedAt": "2026-06-18T00:55:33.719Z"
 }
