@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1781749858145-6phs5",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 64534,
       "trigger": "AWAITING",
       "claude": "Grade A FVG on fresh 5M demand, bullish alignment across timeframes, excellent R:R ratios (1:1.98 to 1:8.71), tight SL at 0.20% risk, entry reachable 78 pips below current price, and clear invalidation level; Asian session provides liquidity for scalp execution.",
-      "createdAt": 1781749858145
+      "createdAt": 1781749858145,
+      "enteredAt": 1781751900000,
+      "stage": 0,
+      "stop": 64470.5,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -154,5 +159,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T03:05:40.869Z"
+  "updatedAt": "2026-06-18T03:10:43.465Z"
 }
