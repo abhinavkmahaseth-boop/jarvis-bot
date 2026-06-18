@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1781768135609-24w2u",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 64786.5,
       "trigger": "PENDING",
       "claude": "Grade A FVG with strong 1:2.82+ R:R, tight SL (0.21%), aligned bearish bias across timeframes, entry reachable within Asian session volatility, and clear invalidation level.",
-      "createdAt": 1781768135609
+      "createdAt": 1781768135609,
+      "enteredAt": 1781770200000,
+      "stage": 0,
+      "stop": 64709,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -220,5 +225,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T08:10:49.917Z"
+  "updatedAt": "2026-06-18T08:15:48.461Z"
 }
