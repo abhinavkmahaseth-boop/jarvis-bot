@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781790342422-1ds0w",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "B",
+      "tf": "15M",
+      "zoneLow": 64383.5,
+      "zoneHigh": 64491,
+      "entry": 64437.5,
+      "sl": 64555,
+      "tp1": 63851.5,
+      "tp2": 63667,
+      "tp3": 63596.5,
+      "rr1": 4.99,
+      "rr2": 6.56,
+      "rr3": 7.16,
+      "qty": 170,
+      "invalidation": 64786.5,
+      "trigger": "CONFIRMED",
+      "claude": "Excellent R:R (1:4.98), bearish confluence across timeframes, confirmed lower-TF entry trigger at tapped FVG, tight SL (0.18%) suitable for scalp mode, clear invalidation level, and favorable session timing.",
+      "createdAt": 1781790342422
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -262,5 +286,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T13:40:46.769Z"
+  "updatedAt": "2026-06-18T13:45:42.969Z"
 }
