@@ -417,12 +417,12 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-18T19:01:10.042Z",
+  "updatedAt": "2026-06-18T19:05:37.612Z",
   "live": {
     "armed": false,
     "maxLots": 1,
     "mode": "arm-and-auto",
     "keysSet": false,
-    "updatedAt": "2026-06-18T19:01:10.041Z"
+    "updatedAt": "2026-06-18T19:05:37.611Z"
   }
 }
