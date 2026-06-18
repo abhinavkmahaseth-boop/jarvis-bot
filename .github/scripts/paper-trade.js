@@ -13,11 +13,19 @@ const path = require('path');
 const ENGINE = require('../../engine.js');
 const { verifyTrade } = require('../../claude.js');
 const NOTIFY = require('../../notify.js');
+const DELTA  = require('./delta.js');
 
 const TG_TOKEN   = process.env.TG_TOKEN;
 const TG_CHAT    = process.env.TG_CHAT_ID;
 const DISCORD    = process.env.DISCORD_WEBHOOK || '';
 const CLAUDE_KEY = process.env.CLAUDE_API_KEY || '';
+// ── Live execution (Delta India) — DORMANT unless explicitly armed ────────────
+// Requires BOTH a master switch (LIVE_TRADING=on) AND trade keys. Absent either,
+// LIVE_ARMED is false and not a single real order is ever sent. Only the algo book
+// trades live, 1 lot (hard-capped in delta.js).
+const DELTA_KEY    = process.env.DELTA_API_KEY || '';
+const DELTA_SECRET = process.env.DELTA_API_SECRET || '';
+const LIVE_ARMED   = process.env.LIVE_TRADING === 'on' && !!DELTA_KEY && !!DELTA_SECRET;
 const SYM        = 'BTCUSD';
 const ALGO_MODE  = 'scalp';
 const ACCOUNT    = 1000;
@@ -41,8 +49,8 @@ const ALGO_STATE_FILE = process.env.ALGO_STATE_FILE || STATE_FILE.replace(/state
 //   claude → Claude-gated, grades A+B, full Telegram flow (actionable alerts)
 //   algo   → no Claude, Grade-A only, close-only Telegram (passive forward-test)
 const BOOKS = {
-  claude: { file: STATE_FILE,      label: 'CLAUDE', claude: true,  grade: null, tag: '',         pings: 'full' },
-  algo:   { file: ALGO_STATE_FILE, label: 'AUTO',   claude: false, grade: 'A',  tag: ' 🤖 AUTO', pings: 'closeonly' },
+  claude: { file: STATE_FILE,      label: 'CLAUDE', claude: true,  grade: null, tag: '',         pings: 'full',      live: false },
+  algo:   { file: ALGO_STATE_FILE, label: 'AUTO',   claude: false, grade: 'A',  tag: ' 🤖 AUTO', pings: 'closeonly', live: true  },
 };
 
 const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -65,6 +73,48 @@ function saveState(s, file) { s.updatedAt = new Date().toISOString(); fs.writeFi
 async function tg(text) {
   const sent = await NOTIFY.notify(text, { discord: DISCORD, tgToken: TG_TOKEN, tgChat: TG_CHAT });
   if (!sent.length) console.log('[notify skipped — no channel]', NOTIFY.plain(text));
+}
+
+// ── Live execution helpers (algo book, armed only) ────────────────────────────
+function liveRec(state, ev, extra) {
+  state.live = state.live || {};
+  state.live.log = [...(state.live.log || []), { t: Date.now(), ev, ...extra }].slice(-30);
+}
+// Place a real 1-lot limit + bracket(SL,TP1) order mirroring a fresh algo setup.
+async function livePlace(state, p) {
+  if (!LIVE_ARMED) return;
+  try {
+    const pos = await DELTA.getPosition({ key: DELTA_KEY, secret: DELTA_SECRET });
+    if (pos.size !== 0) { liveRec(state, 'SKIP', { why: 'Delta already has a position', size: pos.size }); return; }
+    const side = p.lng ? 'buy' : 'sell';
+    const o = await DELTA.placeBracketLimit({ key: DELTA_KEY, secret: DELTA_SECRET,
+      side, lots: 1, limitPrice: p.entry, stopPrice: p.sl, takeProfitPrice: p.tp1 });
+    p.liveOrderId = o.id;
+    liveRec(state, 'PLACED', { id: o.id, dir: p.dir, entry: p.entry, sl: p.sl, tp: p.tp1 });
+    await tg(`💸 <b>LIVE ORDER PLACED — BTC ${p.dir}</b> (Delta · 1 lot)\nLimit ${F(p.entry)} · SL ${F(p.sl)} · TP ${F(p.tp1)} · bracket on exchange`);
+  } catch (e) {
+    liveRec(state, 'ERROR', { why: e.message });
+    await tg(`⚠️ <b>LIVE place FAILED — BTC ${p.dir}</b>\n${e.message}`);
+  }
+}
+// Cancel a still-resting live order when its setup voids before filling.
+async function liveCancel(state, p) {
+  if (!LIVE_ARMED || !p.liveOrderId) return;
+  try { await DELTA.cancelOrder({ key: DELTA_KEY, secret: DELTA_SECRET, orderId: p.liveOrderId });
+        liveRec(state, 'CANCELLED', { id: p.liveOrderId, dir: p.dir }); }
+  catch (e) { liveRec(state, 'ERROR', { why: 'cancel: ' + e.message }); }
+}
+// Safety net: after the paper book closes, make sure Delta is actually flat.
+async function liveEnsureFlat(state) {
+  if (!LIVE_ARMED) return;
+  try {
+    const pos = await DELTA.getPosition({ key: DELTA_KEY, secret: DELTA_SECRET });
+    if (pos.size !== 0) {
+      await DELTA.closePosition({ key: DELTA_KEY, secret: DELTA_SECRET, size: pos.size, side: pos.size > 0 ? 'sell' : 'buy' });
+      liveRec(state, 'FORCE-FLAT', { size: pos.size });
+      await tg(`🧯 <b>LIVE safety close</b> — flattened a lingering ${pos.size > 0 ? 'long' : 'short'} (${Math.abs(pos.size)} lot)`);
+    }
+  } catch (e) { liveRec(state, 'ERROR', { why: 'flat: ' + e.message }); }
 }
 
 const equityOf = s => s.startEquity + s.closed.reduce((a, t) => a + (t.pnl || 0), 0);
@@ -162,10 +212,13 @@ function finishTrade(t, c, reason, exitPrice) {
 async function runBook(cfg, data, c5) {
   const state = loadState(cfg.file);
   enforceSinglePosition(state);   // absorb any legacy double-pending before processing
+  // Live-execution status surface (algo book) — lets the portal show armed/disarmed.
+  if (cfg.live) state.live = { ...(state.live || {}), armed: LIVE_ARMED, maxLots: DELTA.MAX_LOTS,
+    mode: 'arm-and-auto', keysSet: !!(DELTA_KEY && DELTA_SECRET), updatedAt: new Date().toISOString() };
   // Settled candles only — drop the most-recently-closed bar so a bad print has a
   // bar to be corrected before we fill or exit off it. Everything below uses these.
   const settled = SETTLE_BARS > 0 ? c5.slice(0, -SETTLE_BARS) : c5;
-  console.log(`[${cfg.label}] cp=${data.cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}`);
+  console.log(`[${cfg.label}] cp=${data.cp} · pending=${state.pending.length} open=${state.open.length} closed=${state.closed.length}${cfg.live && LIVE_ARMED ? ' · 🔴 LIVE ARMED' : ''}`);
 
   // 1) Manage open trades by REPLAYING each from entry on settled candles. The trade
   //    only closes when that close is confirmed by settled data; otherwise we just
@@ -218,6 +271,7 @@ async function runBook(cfg, data, c5) {
       }
     } else if (voided || stale) {
       state.pending = state.pending.filter(x => x.id !== p.id);
+      if (cfg.live) await liveCancel(state, p);   // pull the resting Delta order if it hasn't filled
       if (cfg.pings === 'full')
         await tg(`🚫 <b>SETUP CANCELLED — BTC ${p.dir}</b>\n${voided ? 'Structure void (CHoCH broken)' : 'Expired (6h, no entry)'} · entry ${F(p.entry)}`);
     }
@@ -254,6 +308,9 @@ async function runBook(cfg, data, c5) {
       trigger: s.trigger, claude: note, createdAt: now(),
     };
     state.pending.push(p);
+    // LIVE: rest a real 1-lot limit + bracket at this entry on Delta (algo book, armed).
+    // Delta fills it in real time at the intended price and manages the SL/TP bracket.
+    if (cfg.live) await livePlace(state, p);
     if (cfg.pings === 'full') {
       const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
       await tg(
@@ -268,6 +325,10 @@ async function runBook(cfg, data, c5) {
       );
     }
   }
+
+  // LIVE safety net: if the algo book expects NOTHING active, Delta must be flat with
+  // no resting orders. This is the backstop that guarantees no surprise live position.
+  if (cfg.live && LIVE_ARMED && !state.open.length && !state.pending.length) await liveEnsureFlat(state);
 
   saveState(state, cfg.file);
   console.log(`[${cfg.label}] saved → ${path.basename(cfg.file)}`);

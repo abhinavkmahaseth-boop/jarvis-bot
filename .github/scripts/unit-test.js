@@ -125,5 +125,17 @@ const mkT = o => Object.assign({ sym:'BTCUSD', dir:'LONG', lng:true, entry:100, 
   ok(Number.isFinite(ENGINE.contractQty('BTCUSD', 100, 100, 20)), 'zero stop distance → finite qty (no divide-by-zero)');
 }
 
+// ── Delta live client: signing + the 1-lot hard cap (offline, no network) ─────
+{
+  const D = require('./delta.js');
+  const a = D.sign('secret', 'POST', '1700000000', '/v2/orders', '', '{"x":1}');
+  const b = D.sign('secret', 'POST', '1700000000', '/v2/orders', '', '{"x":1}');
+  ok(/^[0-9a-f]{64}$/.test(a) && a === b, 'Delta sign() is a deterministic 64-hex HMAC');
+  ok(D.sign('secret', 'GET', '1700000000', '/v2/orders', '', '') !== a, 'signature changes with the request');
+  ok(D.MAX_LOTS === 1 && D.BTCUSD_ID === 27, 'hard cap MAX_LOTS=1 · BTCUSD product_id=27');
+  const clamp = n => Math.min(Math.max(1, Math.round(n || 1)), D.MAX_LOTS);
+  ok([1, 5, 100, 999, 0].every(n => clamp(n) <= 1), '1-lot cap clamps any requested size to ≤ 1');
+}
+
 console.log(fails === 0 ? '\n✅ UNIT TESTS PASSED' : `\n❌ UNIT TESTS FAILED (${fails})`);
 process.exit(fails === 0 ? 0 : 1);

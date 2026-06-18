@@ -545,6 +545,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         <span class="sc-desc" style="margin-top:.5rem;display:block">In Discord: a server channel → <b>Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL</b> → paste above.<br>For the automated alerts, also add it as a GitHub repo secret named <b>DISCORD_WEBHOOK</b>.</span>
       </div>
 
+      <!-- Live Execution (Delta) -->
+      <div class="settings-card" style="grid-column:1/-1;border-color:rgba(240,85,107,.35)">
+        <div class="sc-title" style="color:var(--red)">🔴 Live Execution — Delta India (real orders)</div>
+        <div class="sc-desc" style="margin-bottom:.8rem;line-height:1.6">
+          Sends <b>real 1-lot orders (0.001 BTC)</b> for the <b>Paper · Auto (algo)</b> book only. Hands-off "arm-and-auto": once armed, the bot places orders automatically. <b>1 lot is hard-capped in code</b> — it cannot size up. Default is <b>OFF</b>; nothing trades live until you do all 3 steps. You own every live trade.
+        </div>
+        <div class="sc-field">
+          <div class="sc-label" style="font-weight:600;color:var(--text)">1 · Create a Delta API key</div>
+          <div class="sc-desc">Delta India → <b>Account → API Keys → New API Key</b>. Enable <b>Trading</b> permission. <b>Leave Withdrawals OFF.</b> Copy the <b>key</b> and <b>secret</b>.</div>
+        </div>
+        <div class="sc-field">
+          <div class="sc-label" style="font-weight:600;color:var(--text)">2 · Add them as GitHub repo secrets</div>
+          <div class="sc-desc">Repo <b>Settings → Secrets and variables → Actions → New repository secret</b>:<br>• <b>DELTA_API_KEY</b> = your key &nbsp;•&nbsp; <b>DELTA_API_SECRET</b> = your secret</div>
+        </div>
+        <div class="sc-field">
+          <div class="sc-label" style="font-weight:600;color:var(--text)">3 · Arm it (master switch)</div>
+          <div class="sc-desc">Same page → <b>Variables</b> tab → <b>New repository variable</b>: name <b>LIVE_TRADING</b>, value <b>on</b>. The next cron cycle goes live.<br><b style="color:var(--amber)">🧯 Kill switch:</b> set <b>LIVE_TRADING</b> to <b>off</b> (or delete it) — the bot instantly stops placing orders and flattens to paper-only.</div>
+        </div>
+        <div class="sc-desc" style="margin-top:.4rem;color:var(--text3)">Live status, armed/disarmed and the real-order log show on the <b>Paper · Auto</b> tab. Exits use a Delta bracket (stop-loss + TP1). Watch your first few live trades closely.</div>
+      </div>
+
       <div class="settings-card">
         <div class="sc-title">Telegram Alerts <span style="font-weight:400;color:var(--text3);font-size:9px">· optional / backup</span></div>
         <div class="sc-field">
@@ -872,7 +893,25 @@ async function _renderPaperBook(url, elId, opts) {
   const pf = gL ? (gW / gL) : (gW ? Infinity : 0);
   const pos = v => v >= 0 ? 'var(--green)' : 'var(--red)';
 
-  let h = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
+  // Live-execution banner (algo book only) — shows armed/disarmed + recent real orders.
+  let liveBanner = '';
+  if (!isClaude && s.live) {
+    const lv = s.live, armed = !!lv.armed;
+    const evColor = e => e === 'PLACED' ? 'var(--green)' : e === 'ERROR' ? 'var(--red)' : e === 'FORCE-FLAT' ? 'var(--amber)' : 'var(--text2)';
+    const logRows = (lv.log || []).slice(-6).reverse().map(e =>
+      `<div style="font-size:11px;padding:1px 0"><span style="color:var(--text3)">${_pDate(e.t)}</span> · <b style="color:${evColor(e.ev)}">${esc(e.ev)}</b> ${e.dir ? esc(e.dir) + ' ' : ''}${e.entry != null ? '@ ' + F(e.entry) : ''}${e.why ? '<span style="color:var(--text3)"> · ' + esc(e.why) + '</span>' : ''}</div>`
+    ).join('') || '<div style="font-size:11px;color:var(--text3)">No live orders yet.</div>';
+    liveBanner = `<div style="background:var(--bg);border:1px solid ${armed ? 'rgba(240,85,107,.45)' : 'var(--border)'};border-radius:8px;padding:.7rem .9rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 LIVE EXECUTION: ARMED' : '⚪ Live execution: OFF (paper only)'}</span>
+        <span style="font-size:11px;color:var(--text3)">Delta India · ${lv.maxLots || 1} lot max · ${lv.keysSet ? 'keys set' : 'no keys'} · arm-and-auto</span>
+      </div>
+      <div style="font-size:11px;color:${armed ? 'var(--red)' : 'var(--text3)'};margin-top:.3rem">${armed ? 'Real 1-lot orders are being placed on Delta for algo signals.' : 'No real orders. Arm in Settings → Live Execution (Delta).'}</div>
+      <div style="margin-top:.5rem;border-top:1px solid var(--border);padding-top:.4rem">${logRows}</div>
+    </div>`;
+  }
+
+  let h = liveBanner + `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
     ${_card('Account', '$' + F(equity), pos(net))}
     ${_card('Net P&L', (net>=0?'+':'') + '$' + F(net) + '  (' + (totalR>=0?'+':'') + totalR.toFixed(1) + 'R)', pos(net))}
     ${_card('Win rate', winRate + '%  (' + wins.length + 'W/' + losses.length + 'L)')}

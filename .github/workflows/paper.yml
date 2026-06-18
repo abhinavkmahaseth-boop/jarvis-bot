@@ -56,6 +56,11 @@ jobs:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           STATE_FILE: ${{ github.workspace }}/state.json
           ALGO_STATE_FILE: ${{ github.workspace }}/state-algo.json
+          # Live execution (algo book) — DORMANT until BOTH the master switch variable
+          # LIVE_TRADING=on AND the trade keys are set. Default: nothing trades live.
+          LIVE_TRADING: ${{ vars.LIVE_TRADING }}
+          DELTA_API_KEY: ${{ secrets.DELTA_API_KEY }}
+          DELTA_API_SECRET: ${{ secrets.DELTA_API_SECRET }}
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             TASK="${{ github.event.action }}"                # monitor | review
