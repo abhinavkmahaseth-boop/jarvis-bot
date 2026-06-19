@@ -1,35 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1781853344071-d4i3q",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "B",
-      "tf": "5M",
-      "zoneLow": 62884.5,
-      "zoneHigh": 62946,
-      "entry": 62915.5,
-      "sl": 63009,
-      "tp1": 62716.5,
-      "tp2": 62650.5,
-      "tp3": 62527,
-      "rr1": 2.13,
-      "rr2": 2.83,
-      "rr3": 4.16,
-      "qty": 214,
-      "invalidation": 64786.5,
-      "trigger": "CONFIRMED",
-      "claude": "Bearish bias aligned across 1H/15M, B-grade FVG tapped with confirmed displacement, 1:2.13 R:R exceeds 1.5 threshold, tight SL (15.5 pips) appropriate for scalp mode, entry 161 pips above current price is reachable, Asian session supports lower volatility execution, clear invalidation level at 64786.50.",
-      "createdAt": 1781853344071,
-      "enteredAt": 1781874600000,
-      "stage": 2,
-      "stop": 62716.5,
-      "realizedR": 1.065,
-      "remaining": 0.5
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -288,8 +259,41 @@
       "totalR": 1.89,
       "pnl": 37.8,
       "closedAt": 1781785800000
+    },
+    {
+      "id": "1781853344071-d4i3q",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "B",
+      "tf": "5M",
+      "zoneLow": 62884.5,
+      "zoneHigh": 62946,
+      "entry": 62915.5,
+      "sl": 63009,
+      "tp1": 62716.5,
+      "tp2": 62650.5,
+      "tp3": 62527,
+      "rr1": 2.13,
+      "rr2": 2.83,
+      "rr3": 4.16,
+      "qty": 214,
+      "invalidation": 64786.5,
+      "trigger": "CONFIRMED",
+      "claude": "Bearish bias aligned across 1H/15M, B-grade FVG tapped with confirmed displacement, 1:2.13 R:R exceeds 1.5 threshold, tight SL (15.5 pips) appropriate for scalp mode, entry 161 pips above current price is reachable, Asian session supports lower volatility execution, clear invalidation level at 64786.50.",
+      "createdAt": 1781853344071,
+      "enteredAt": 1781874600000,
+      "stage": 2,
+      "stop": 62716.5,
+      "realizedR": 2.129171122994652,
+      "remaining": 0,
+      "exitReason": "TP1-trail",
+      "exitPrice": 62716.5,
+      "totalR": 2.13,
+      "pnl": 42.6,
+      "closedAt": 1781875200000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T13:25:34.725Z"
+  "updatedAt": "2026-06-19T13:31:00.880Z"
 }
