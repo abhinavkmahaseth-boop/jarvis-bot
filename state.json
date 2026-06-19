@@ -24,10 +24,10 @@
       "claude": "Bearish bias aligned across 1H/15M, B-grade FVG tapped with confirmed displacement, 1:2.13 R:R exceeds 1.5 threshold, tight SL (15.5 pips) appropriate for scalp mode, entry 161 pips above current price is reachable, Asian session supports lower volatility execution, clear invalidation level at 64786.50.",
       "createdAt": 1781853344071,
       "enteredAt": 1781874600000,
-      "stage": 0,
-      "stop": 63009,
-      "realizedR": 0,
-      "remaining": 1
+      "stage": 2,
+      "stop": 62716.5,
+      "realizedR": 1.065,
+      "remaining": 0.5
     }
   ],
   "closed": [
@@ -291,5 +291,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T13:20:44.317Z"
+  "updatedAt": "2026-06-19T13:25:34.725Z"
 }
