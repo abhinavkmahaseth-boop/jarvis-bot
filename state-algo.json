@@ -1,7 +1,7 @@
 {
   "pending": [
     {
-      "id": "1781811335416-eas9v",
+      "id": "1781833240772-dx0vj",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
@@ -11,17 +11,17 @@
       "zoneHigh": 63533.5,
       "entry": 63447.5,
       "sl": 63596.5,
-      "tp1": 62711.5,
-      "tp2": 62265,
-      "tp3": 62175.5,
-      "rr1": 4.94,
-      "rr2": 7.94,
-      "rr3": 8.54,
+      "tp1": 62841.5,
+      "tp2": 62711.5,
+      "tp3": 62255,
+      "rr1": 4.07,
+      "rr2": 4.94,
+      "rr3": 8,
       "qty": 134,
       "invalidation": 64786.5,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1781811335416
+      "createdAt": 1781833240772
     }
   ],
   "open": [],
@@ -450,12 +450,12 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T01:35:31.050Z",
+  "updatedAt": "2026-06-19T01:40:40.772Z",
   "live": {
     "armed": false,
     "maxLots": 1,
     "mode": "arm-and-auto",
     "keysSet": false,
-    "updatedAt": "2026-06-19T01:35:31.050Z"
+    "updatedAt": "2026-06-19T01:40:40.771Z"
   }
 }
