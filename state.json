@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1781853344071-d4i3q",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "B",
+      "tf": "5M",
+      "zoneLow": 62884.5,
+      "zoneHigh": 62946,
+      "entry": 62915.5,
+      "sl": 63009,
+      "tp1": 62716.5,
+      "tp2": 62650.5,
+      "tp3": 62527,
+      "rr1": 2.13,
+      "rr2": 2.83,
+      "rr3": 4.16,
+      "qty": 214,
+      "invalidation": 64786.5,
+      "trigger": "CONFIRMED",
+      "claude": "Bearish bias aligned across 1H/15M, B-grade FVG tapped with confirmed displacement, 1:2.13 R:R exceeds 1.5 threshold, tight SL (15.5 pips) appropriate for scalp mode, entry 161 pips above current price is reachable, Asian session supports lower volatility execution, clear invalidation level at 64786.50.",
+      "createdAt": 1781853344071
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -262,5 +286,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T07:10:48.325Z"
+  "updatedAt": "2026-06-19T07:15:44.942Z"
 }
