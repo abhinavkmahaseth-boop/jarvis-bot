@@ -1,35 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1781856065926-edyvz",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 62656.5,
-      "zoneHigh": 62694.5,
-      "entry": 62675.5,
-      "sl": 62757,
-      "tp1": 62381.5,
-      "tp2": 62288.5,
-      "tp3": 62245,
-      "rr1": 3.61,
-      "rr2": 4.75,
-      "rr3": 5.28,
-      "qty": 245,
-      "invalidation": 64786.5,
-      "trigger": "AWAITING",
-      "claude": "auto · no Claude",
-      "createdAt": 1781856065926,
-      "enteredAt": 1781857500000,
-      "stage": 0,
-      "stop": 62757,
-      "realizedR": 0,
-      "remaining": 1
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -452,22 +423,55 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1781810700000
+    },
+    {
+      "id": "1781856065926-edyvz",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 62656.5,
+      "zoneHigh": 62694.5,
+      "entry": 62675.5,
+      "sl": 62757,
+      "tp1": 62381.5,
+      "tp2": 62288.5,
+      "tp3": 62245,
+      "rr1": 3.61,
+      "rr2": 4.75,
+      "rr3": 5.28,
+      "qty": 245,
+      "invalidation": 64786.5,
+      "trigger": "AWAITING",
+      "claude": "auto · no Claude",
+      "createdAt": 1781856065926,
+      "enteredAt": 1781857500000,
+      "stage": 0,
+      "stop": 62757,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 62757,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1781858100000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T08:40:43.654Z",
+  "updatedAt": "2026-06-19T08:45:39.297Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-19T08:40:43.284Z",
+    "updatedAt": "2026-06-19T08:45:38.419Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1781858443654
+      "at": 1781858738781
     }
   }
 }
