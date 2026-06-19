@@ -924,7 +924,7 @@ async function renderLive() {
       <span style="font-size:12px;color:var(--text2)">Delta India · algo book · ${lv.maxLots || 1} lot max (0.001 BTC) · arm-and-auto</span>
     </div>
     <div style="font-size:12px;color:${armed ? 'var(--red)' : 'var(--text3)'};margin-top:.4rem">${armed ? 'Real 1-lot orders are placed automatically on algo signals.' : 'Paper only — no real orders are being placed.'}</div>
-    <div style="font-size:11px;color:var(--text3);margin-top:.3rem">Keys: ${lv.keysSet ? '<span style="color:var(--green)">set</span>' : '<span style="color:var(--red)">not set</span>'} · master switch <b>LIVE_TRADING=${armed ? 'on' : 'off'}</b> · updated ${lv.updatedAt ? _pDate(new Date(lv.updatedAt).getTime()) : '—'}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:.3rem">Keys: ${lv.keysSet ? '<span style="color:var(--green)">set</span>' : '<span style="color:var(--red)">not set</span>'}${lv.connection ? (lv.connection.ok ? ' · <span style="color:var(--green)">🟢 connected</span>' + (lv.connection.balance != null ? ' (bal $' + F(lv.connection.balance) + ')' : '') : ' · <span style="color:var(--red)">🔴 auth failed</span>') : ''} · switch <b>${lv.switchOn ? 'on' : 'off'}</b> · ${lv.lots || 1} lot(s) · updated ${lv.updatedAt ? _pDate(new Date(lv.updatedAt).getTime()) : '—'}</div>
   </div>`;
 
   // Not armed → inline arm guide
@@ -1675,12 +1675,19 @@ async function loadLiveSettingsUI() {
   try { const r = await fetch(`${LIVE_CFG_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) cfg = await r.json(); } catch {}
   try { const r = await fetch(`${PAPER_ALGO_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) live = (await r.json()).live || {}; } catch {}
   const lotsEl = document.getElementById('live-lots'); if (lotsEl) lotsEl.value = cfg.lots || 1;
+  const conn = live.connection;
   const ks = document.getElementById('live-keys-status');
-  if (ks) ks.innerHTML = live.keysSet ? '<b style="color:var(--green)">✅ set</b>' : '<b style="color:var(--red)">❌ not set</b> — add in GitHub Secrets';
+  if (ks) {
+    if (!live.keysSet) ks.innerHTML = '<b style="color:var(--red)">❌ not set</b> — add in GitHub Secrets';
+    else if (conn && conn.ok) ks.innerHTML = `<b style="color:var(--green)">✅ set · 🟢 connected</b>${conn.balance != null ? ' · bal $' + F(conn.balance) : ''}`;
+    else if (conn && conn.ok === false) ks.innerHTML = `<b style="color:var(--green)">set</b> · <b style="color:var(--red)">🔴 auth failed</b> <span style="color:var(--text3)">(${esc(conn.error || '')})</span>`;
+    else ks.innerHTML = '<b style="color:var(--green)">✅ set</b> · <span style="color:var(--text3)">checking…</span>';
+  }
   const st = document.getElementById('live-set-status');
   if (st) {
     const armed = !!live.armed;
-    st.innerHTML = `Bot status: <b style="color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 ARMED' : '⚪ OFF'}</b> · switch <b>${cfg.armed ? 'on' : 'off'}</b> · <b>${cfg.lots || 1}</b> lot(s) · keys <b>${live.keysSet ? 'set' : 'not set'}</b>${live.updatedAt ? ' · last run ' + _pDate(new Date(live.updatedAt).getTime()) : ''}`;
+    const connTxt = !live.keysSet ? '' : conn && conn.ok ? ' · <span style="color:var(--green)">🟢 connected</span>' : conn && conn.ok === false ? ' · <span style="color:var(--red)">🔴 auth failed</span>' : ' · checking…';
+    st.innerHTML = `Bot status: <b style="color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 ARMED' : '⚪ OFF'}</b> · switch <b>${cfg.armed ? 'on' : 'off'}</b> · <b>${cfg.lots || 1}</b> lot(s) · keys <b>${live.keysSet ? 'set' : 'not set'}</b>${connTxt}${live.updatedAt ? ' · last run ' + _pDate(new Date(live.updatedAt).getTime()) : ''}`;
   }
 }
 async function setLive(armed) {

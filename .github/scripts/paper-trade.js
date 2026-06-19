@@ -89,6 +89,20 @@ function liveRec(state, ev, extra) {
   state.live = state.live || {};
   state.live.log = [...(state.live.log || []), { t: Date.now(), ev, ...extra }].slice(-30);
 }
+// Read-only connection check — proves the keys + signing work WITHOUT placing any
+// order. Runs whenever keys are present (even when disarmed), so you can verify
+// before going live. Tries the balance read, falls back to a signed position read.
+async function liveTestConnection(state) {
+  if (!LIVE_KEYS) { state.live = { ...(state.live || {}), connection: null }; return; }
+  try {
+    let balance = null;
+    try { balance = (await DELTA.testConnection({ key: DELTA_KEY, secret: DELTA_SECRET })).balance; }
+    catch { await DELTA.getPosition({ key: DELTA_KEY, secret: DELTA_SECRET }); }   // fallback signed read
+    state.live.connection = { ok: true, balance, at: Date.now() };
+  } catch (e) {
+    state.live.connection = { ok: false, error: e.message, at: Date.now() };
+  }
+}
 // Place a real LIVE_LOTS limit + bracket(SL,TP1) order mirroring a fresh algo setup.
 async function livePlace(state, p) {
   if (!LIVE_ARMED) return;
@@ -222,9 +236,12 @@ async function runBook(cfg, data, c5) {
   const state = loadState(cfg.file);
   enforceSinglePosition(state);   // absorb any legacy double-pending before processing
   // Live-execution status surface (algo book) — lets the portal show armed/disarmed.
-  if (cfg.live) state.live = { ...(state.live || {}), armed: LIVE_ARMED, switchOn: LIVE_CFG.armed === true,
-    lots: LIVE_LOTS, maxLots: DELTA.MAX_LOTS, mode: 'arm-and-auto', keysSet: LIVE_KEYS,
-    updatedAt: new Date().toISOString() };
+  if (cfg.live) {
+    state.live = { ...(state.live || {}), armed: LIVE_ARMED, switchOn: LIVE_CFG.armed === true,
+      lots: LIVE_LOTS, maxLots: DELTA.MAX_LOTS, mode: 'arm-and-auto', keysSet: LIVE_KEYS,
+      updatedAt: new Date().toISOString() };
+    await liveTestConnection(state);   // read-only auth check (no orders)
+  }
   // Settled candles only — drop the most-recently-closed bar so a bad print has a
   // bar to be corrected before we fill or exit off it. Everything below uses these.
   const settled = SETTLE_BARS > 0 ? c5.slice(0, -SETTLE_BARS) : c5;
