@@ -20,12 +20,21 @@ const TG_CHAT    = process.env.TG_CHAT_ID;
 const DISCORD    = process.env.DISCORD_WEBHOOK || '';
 const CLAUDE_KEY = process.env.CLAUDE_API_KEY || '';
 // ── Live execution (Delta India) — DORMANT unless explicitly armed ────────────
-// Requires BOTH a master switch (LIVE_TRADING=on) AND trade keys. Absent either,
-// LIVE_ARMED is false and not a single real order is ever sent. Only the algo book
-// trades live, 1 lot (hard-capped in delta.js).
+// Two independent gates: (1) trade KEYS must be present (GitHub Secrets, server-side)
+// and (2) the portal's on/off switch in live-config.json must say armed:true. Absent
+// either, LIVE_ARMED is false and not a single real order is sent. Only the algo book
+// trades live. Quantity is the user's `lots` from the portal, clamped to delta's cap.
 const DELTA_KEY    = process.env.DELTA_API_KEY || '';
 const DELTA_SECRET = process.env.DELTA_API_SECRET || '';
-const LIVE_ARMED   = process.env.LIVE_TRADING === 'on' && !!DELTA_KEY && !!DELTA_SECRET;
+const LIVE_CONFIG_FILE = process.env.LIVE_CONFIG_FILE || path.join(process.cwd(), 'live-config.json');
+function loadLiveConfig() {
+  try { return JSON.parse(fs.readFileSync(LIVE_CONFIG_FILE, 'utf8')); }
+  catch { return { armed: false, lots: 1 }; }
+}
+const LIVE_CFG   = loadLiveConfig();
+const LIVE_KEYS  = !!DELTA_KEY && !!DELTA_SECRET;
+const LIVE_ARMED = LIVE_CFG.armed === true && LIVE_KEYS;
+const LIVE_LOTS  = Math.min(Math.max(1, Math.round(Number(LIVE_CFG.lots) || 1)), DELTA.MAX_LOTS);
 const SYM        = 'BTCUSD';
 const ALGO_MODE  = 'scalp';
 const ACCOUNT    = 1000;
@@ -80,7 +89,7 @@ function liveRec(state, ev, extra) {
   state.live = state.live || {};
   state.live.log = [...(state.live.log || []), { t: Date.now(), ev, ...extra }].slice(-30);
 }
-// Place a real 1-lot limit + bracket(SL,TP1) order mirroring a fresh algo setup.
+// Place a real LIVE_LOTS limit + bracket(SL,TP1) order mirroring a fresh algo setup.
 async function livePlace(state, p) {
   if (!LIVE_ARMED) return;
   try {
@@ -88,10 +97,10 @@ async function livePlace(state, p) {
     if (pos.size !== 0) { liveRec(state, 'SKIP', { why: 'Delta already has a position', size: pos.size }); return; }
     const side = p.lng ? 'buy' : 'sell';
     const o = await DELTA.placeBracketLimit({ key: DELTA_KEY, secret: DELTA_SECRET,
-      side, lots: 1, limitPrice: p.entry, stopPrice: p.sl, takeProfitPrice: p.tp1 });
+      side, lots: LIVE_LOTS, limitPrice: p.entry, stopPrice: p.sl, takeProfitPrice: p.tp1 });
     p.liveOrderId = o.id;
-    liveRec(state, 'PLACED', { id: o.id, dir: p.dir, entry: p.entry, sl: p.sl, tp: p.tp1 });
-    await tg(`💸 <b>LIVE ORDER PLACED — BTC ${p.dir}</b> (Delta · 1 lot)\nLimit ${F(p.entry)} · SL ${F(p.sl)} · TP ${F(p.tp1)} · bracket on exchange`);
+    liveRec(state, 'PLACED', { id: o.id, dir: p.dir, lots: LIVE_LOTS, entry: p.entry, sl: p.sl, tp: p.tp1 });
+    await tg(`💸 <b>LIVE ORDER PLACED — BTC ${p.dir}</b> (Delta · ${LIVE_LOTS} lot${LIVE_LOTS > 1 ? 's' : ''})\nLimit ${F(p.entry)} · SL ${F(p.sl)} · TP ${F(p.tp1)} · bracket on exchange`);
   } catch (e) {
     liveRec(state, 'ERROR', { why: e.message });
     await tg(`⚠️ <b>LIVE place FAILED — BTC ${p.dir}</b>\n${e.message}`);
@@ -213,8 +222,9 @@ async function runBook(cfg, data, c5) {
   const state = loadState(cfg.file);
   enforceSinglePosition(state);   // absorb any legacy double-pending before processing
   // Live-execution status surface (algo book) — lets the portal show armed/disarmed.
-  if (cfg.live) state.live = { ...(state.live || {}), armed: LIVE_ARMED, maxLots: DELTA.MAX_LOTS,
-    mode: 'arm-and-auto', keysSet: !!(DELTA_KEY && DELTA_SECRET), updatedAt: new Date().toISOString() };
+  if (cfg.live) state.live = { ...(state.live || {}), armed: LIVE_ARMED, switchOn: LIVE_CFG.armed === true,
+    lots: LIVE_LOTS, maxLots: DELTA.MAX_LOTS, mode: 'arm-and-auto', keysSet: LIVE_KEYS,
+    updatedAt: new Date().toISOString() };
   // Settled candles only — drop the most-recently-closed bar so a bad print has a
   // bar to be corrected before we fill or exit off it. Everything below uses these.
   const settled = SETTLE_BARS > 0 ? c5.slice(0, -SETTLE_BARS) : c5;

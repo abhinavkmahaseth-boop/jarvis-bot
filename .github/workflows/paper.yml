@@ -47,6 +47,9 @@ jobs:
             if [ -f /tmp/pd/$f ]; then cp /tmp/pd/$f ./$f; echo "loaded $f";
             else echo '{"pending":[],"open":[],"closed":[],"startEquity":1000}' > ./$f; echo "initialised $f"; fi
           done
+          # Live on/off + quantity, set by the portal (default OFF if the file is absent)
+          if [ -f /tmp/pd/live-config.json ]; then cp /tmp/pd/live-config.json ./live-config.json; echo "loaded live-config";
+          else echo '{"armed":false,"lots":1}' > ./live-config.json; echo "no live-config — OFF"; fi
 
       - name: Run paper-trader
         env:
@@ -56,9 +59,9 @@ jobs:
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           STATE_FILE: ${{ github.workspace }}/state.json
           ALGO_STATE_FILE: ${{ github.workspace }}/state-algo.json
-          # Live execution (algo book) — DORMANT until BOTH the master switch variable
-          # LIVE_TRADING=on AND the trade keys are set. Default: nothing trades live.
-          LIVE_TRADING: ${{ vars.LIVE_TRADING }}
+          # Live execution (algo book) — DORMANT until BOTH the trade keys (secrets) are set
+          # AND the portal switch in live-config.json says armed:true. Default: nothing live.
+          LIVE_CONFIG_FILE: ${{ github.workspace }}/live-config.json
           DELTA_API_KEY: ${{ secrets.DELTA_API_KEY }}
           DELTA_API_SECRET: ${{ secrets.DELTA_API_SECRET }}
         run: |

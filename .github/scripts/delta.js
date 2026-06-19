@@ -6,7 +6,9 @@ const crypto = require('crypto');
 
 const BASE        = 'https://api.india.delta.exchange';
 const BTCUSD_ID   = 27;            // product_id for BTCUSD perp (verified via /v2/products)
-const MAX_LOTS    = 1;             // HARD cap — 1 contract = 0.001 BTC. Do not raise without review.
+const MAX_LOTS    = 100;           // catastrophic-typo ceiling (0.1 BTC). The user sets the
+                                   // actual lots in the portal; this is the absolute hard cap
+                                   // the code can NEVER exceed regardless of config input.
 const UA          = 'jarvis-bot';
 
 // Delta signature: hex(HMAC_SHA256(secret, method + timestamp + path + query + body))

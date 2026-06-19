@@ -561,25 +561,41 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         <span class="sc-desc" style="margin-top:.5rem;display:block">In Discord: a server channel → <b>Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL</b> → paste above.<br>For the automated alerts, also add it as a GitHub repo secret named <b>DISCORD_WEBHOOK</b>.</span>
       </div>
 
-      <!-- Live Execution (Delta) -->
+      <!-- Live Execution (Delta) — interactive controls -->
       <div class="settings-card" style="grid-column:1/-1;border-color:rgba(240,85,107,.35)">
         <div class="sc-title" style="color:var(--red)">🔴 Live Execution — Delta India (real orders)</div>
-        <div class="sc-desc" style="margin-bottom:.8rem;line-height:1.6">
-          Sends <b>real 1-lot orders (0.001 BTC)</b> for the <b>Paper · Auto (algo)</b> book only. Hands-off "arm-and-auto": once armed, the bot places orders automatically. <b>1 lot is hard-capped in code</b> — it cannot size up. Default is <b>OFF</b>; nothing trades live until you do all 3 steps. You own every live trade.
+        <div class="sc-desc" style="margin-bottom:.6rem;line-height:1.6">
+          Places <b>real orders</b> for the <b>Paper · Auto (algo)</b> book only, hands-off. You control the <b>on/off switch</b> and <b>quantity</b> here; <b>API keys stay in GitHub Secrets</b> (secure, server-side). Default OFF. You own every live trade.
         </div>
+        <div id="live-set-status" style="font-size:12px;padding:.5rem .7rem;background:var(--bg);border:1px solid var(--border);border-radius:7px;margin-bottom:.8rem;color:var(--text2)">Loading current status…</div>
+
+        <div class="sc-row">
+          <div class="sc-field">
+            <label class="sc-label">Quantity (lots · 1 = 0.001 BTC)</label>
+            <input type="number" id="live-lots" class="sc-input" min="1" max="100" step="1" value="1" style="width:120px">
+            <div class="sc-desc">You set the size. Hard ceiling <b>100 lots</b> — code can never exceed it.</div>
+          </div>
+          <div class="sc-field">
+            <label class="sc-label">Delta API keys (status)</label>
+            <div style="font-size:13px;padding:7px 0" id="live-keys-status">—</div>
+            <div class="sc-desc"><a href="https://github.com/abhinavkmahaseth-boop/jarvis-bot/settings/secrets/actions" target="_blank" style="color:var(--accent)">Add / rotate in GitHub Secrets →</a> (DELTA_API_KEY, DELTA_API_SECRET · Trading ON, Withdrawals OFF)</div>
+          </div>
+        </div>
+
         <div class="sc-field">
-          <div class="sc-label" style="font-weight:600;color:var(--text)">1 · Create a Delta API key</div>
-          <div class="sc-desc">Delta India → <b>Account → API Keys → New API Key</b>. Enable <b>Trading</b> permission. <b>Leave Withdrawals OFF.</b> Copy the <b>key</b> and <b>secret</b>.</div>
+          <label class="sc-label">GitHub token — lets this switch write the config (fine-grained, this repo only, Contents: Read/write)</label>
+          <input type="password" id="live-gh-token" class="sc-input" placeholder="github_pat_…" autocomplete="off">
+          <div class="sc-desc">Create at <b>github.com/settings/personal-access-tokens</b> → repo access <b>jarvis-bot only</b> → permission <b>Contents: Read and write</b>. Stored only in this browser. <span style="color:var(--amber)">A repo-write token can alter code if stolen — keep it safe.</span></div>
         </div>
-        <div class="sc-field">
-          <div class="sc-label" style="font-weight:600;color:var(--text)">2 · Add them as GitHub repo secrets</div>
-          <div class="sc-desc">Repo <b>Settings → Secrets and variables → Actions → New repository secret</b>:<br>• <b>DELTA_API_KEY</b> = your key &nbsp;•&nbsp; <b>DELTA_API_SECRET</b> = your secret</div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.6rem;align-items:center">
+          <button class="btn btn-save" style="padding:8px 14px" onclick="saveLiveGhToken()">Save token</button>
+          <button class="btn" style="background:rgba(240,85,107,.12);border-color:var(--red);color:var(--red);padding:8px 18px;font-weight:600" onclick="setLive(true)">● ARM live trading</button>
+          <button class="btn btn-algo" style="padding:8px 18px" onclick="setLive(false)">○ Disarm 🧯</button>
+          <button class="btn btn-dl" style="padding:8px 14px" onclick="loadLiveSettingsUI()">↻ Refresh status</button>
         </div>
-        <div class="sc-field">
-          <div class="sc-label" style="font-weight:600;color:var(--text)">3 · Arm it (master switch)</div>
-          <div class="sc-desc">Same page → <b>Variables</b> tab → <b>New repository variable</b>: name <b>LIVE_TRADING</b>, value <b>on</b>. The next cron cycle goes live.<br><b style="color:var(--amber)">🧯 Kill switch:</b> set <b>LIVE_TRADING</b> to <b>off</b> (or delete it) — the bot instantly stops placing orders and flattens to paper-only.</div>
-        </div>
-        <div class="sc-desc" style="margin-top:.4rem;color:var(--text3)">Live status, armed/disarmed and the real-order log show on the <b>Paper · Auto</b> tab. Exits use a Delta bracket (stop-loss + TP1). Watch your first few live trades closely.</div>
+        <div class="key-ok" id="live-apply-status" style="margin-top:.5rem"></div>
+        <div class="sc-desc" style="margin-top:.4rem;color:var(--text3)">Changes take effect on the next cron cycle (~5 min). Full live view on the <b>Live · Delta</b> tab. Exits use a Delta bracket (SL + TP1). <b>Instant hard-kill:</b> delete the Delta secret in GitHub.</div>
       </div>
 
       <div class="settings-card">
@@ -811,6 +827,7 @@ function nav(page) {
   if (page === 'paper-algo') renderPaperAlgo();
   if (page === 'live') renderLive();
   if (page === 'backtest') renderBacktest();
+  if (page === 'settings') loadLiveSettingsUI();
 }
 
 // ── Paper Trades viewer (reads state.json from the paper-data branch) ──────────
@@ -1639,6 +1656,55 @@ function loadDiscordSettingsUI() {
   if (url) { const el = document.getElementById('discord-webhook'); if (el) el.value = url.slice(0, 40) + '…'; }
 }
 
+// ── Live execution controls (writes live-config.json to paper-data via GitHub API) ──
+const LIVE_REPO = 'abhinavkmahaseth-boop/jarvis-bot', LIVE_BRANCH = 'paper-data', LIVE_CFG_PATH = 'live-config.json';
+const LIVE_CFG_URL = `https://raw.githubusercontent.com/${LIVE_REPO}/${LIVE_BRANCH}/${LIVE_CFG_PATH}`;
+function getLiveGhToken() { return localStorage.getItem('live_gh_token') || ''; }
+function saveLiveGhToken() {
+  const el = document.getElementById('live-gh-token'); const st = document.getElementById('live-apply-status');
+  const v = el?.value.trim();
+  if (!v || v.includes('…')) { if (st) { st.textContent = '⚠ Enter the token first'; st.style.color = 'var(--amber)'; } return; }
+  localStorage.setItem('live_gh_token', v);
+  if (el) el.value = v.slice(0, 12) + '…';
+  if (st) { st.textContent = '✓ Token saved (this browser only)'; st.style.color = 'var(--green)'; }
+}
+async function loadLiveSettingsUI() {
+  const tok = getLiveGhToken();
+  const tokEl = document.getElementById('live-gh-token'); if (tok && tokEl && !tokEl.value) tokEl.value = tok.slice(0, 12) + '…';
+  let cfg = { armed: false, lots: 1 }, live = {};
+  try { const r = await fetch(`${LIVE_CFG_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) cfg = await r.json(); } catch {}
+  try { const r = await fetch(`${PAPER_ALGO_URL}?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) live = (await r.json()).live || {}; } catch {}
+  const lotsEl = document.getElementById('live-lots'); if (lotsEl) lotsEl.value = cfg.lots || 1;
+  const ks = document.getElementById('live-keys-status');
+  if (ks) ks.innerHTML = live.keysSet ? '<b style="color:var(--green)">✅ set</b>' : '<b style="color:var(--red)">❌ not set</b> — add in GitHub Secrets';
+  const st = document.getElementById('live-set-status');
+  if (st) {
+    const armed = !!live.armed;
+    st.innerHTML = `Bot status: <b style="color:${armed ? 'var(--red)' : 'var(--text3)'}">${armed ? '🔴 ARMED' : '⚪ OFF'}</b> · switch <b>${cfg.armed ? 'on' : 'off'}</b> · <b>${cfg.lots || 1}</b> lot(s) · keys <b>${live.keysSet ? 'set' : 'not set'}</b>${live.updatedAt ? ' · last run ' + _pDate(new Date(live.updatedAt).getTime()) : ''}`;
+  }
+}
+async function setLive(armed) {
+  const st = document.getElementById('live-apply-status');
+  saveLiveGhToken();
+  const tok = getLiveGhToken();
+  if (!tok) { if (st) { st.textContent = '⚠ Save your GitHub token first'; st.style.color = 'var(--amber)'; } return; }
+  const lots = Math.min(Math.max(1, Math.round(+document.getElementById('live-lots').value || 1)), 100);
+  if (st) { st.textContent = '⏳ Writing config to GitHub…'; st.style.color = 'var(--text2)'; }
+  try {
+    await ghPutLiveConfig(tok, { armed: !!armed, lots, updatedAt: new Date().toISOString() });
+    if (st) { st.innerHTML = armed ? `<b style="color:var(--red)">🔴 ARMED</b> · ${lots} lot(s) — goes live on the next cron cycle (~5 min)` : `<b style="color:var(--green)">⚪ Disarmed</b> — live trading off on the next cycle`; st.style.color = ''; }
+    setTimeout(loadLiveSettingsUI, 1500);
+  } catch (e) { if (st) { st.textContent = '✗ Failed: ' + esc(e.message); st.style.color = 'var(--red)'; } }
+}
+async function ghPutLiveConfig(token, obj) {
+  const api = `https://api.github.com/repos/${LIVE_REPO}/contents/${LIVE_CFG_PATH}`;
+  let sha;
+  try { const r = await fetch(`${api}?ref=${LIVE_BRANCH}&t=${Date.now()}`, { headers: { Authorization: `token ${token}` } }); if (r.ok) sha = (await r.json()).sha; } catch {}
+  const body = { message: `live-config: ${obj.armed ? 'ARM' : 'disarm'} ${obj.lots} lot [skip ci]`, branch: LIVE_BRANCH, content: btoa(JSON.stringify(obj, null, 2)), ...(sha ? { sha } : {}) };
+  const r = await fetch(api, { method: 'PUT', headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || ('HTTP ' + r.status)); }
+}
+
 // Fan out an alert to every configured channel (Discord and/or Telegram).
 // Kept the name sendTelegramAlert so existing call-sites are untouched.
 async function sendTelegramAlert(text) {
@@ -2313,6 +2379,7 @@ async function testClaudeVerification() {
 buildUI();
 loadTgSettingsUI();
 loadDiscordSettingsUI();
+loadLiveSettingsUI();
 loadClaudeSettingsUI();
 loadFirebaseSettingsUI();
 if (initFirebase()) initJournal();
