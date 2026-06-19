@@ -1,29 +1,5 @@
 {
-  "pending": [
-    {
-      "id": "1781829058163-a1qok",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 63361.5,
-      "zoneHigh": 63533.5,
-      "entry": 63447.5,
-      "sl": 63596.5,
-      "tp1": 62841.5,
-      "tp2": 62711.5,
-      "tp3": 62255,
-      "rr1": 4.07,
-      "rr2": 4.94,
-      "rr3": 8,
-      "qty": 134,
-      "invalidation": 64786.5,
-      "trigger": "PENDING",
-      "claude": "Excellent R:R (1:4.07 minimum), fresh Grade A FVG in bearish alignment, tight SL (0.23%), Asian session supports volatility, entry zone 500 pips away is reachable, and clear invalidation level defined.",
-      "createdAt": 1781829058164
-    }
-  ],
+  "pending": [],
   "open": [],
   "closed": [
     {
@@ -286,5 +262,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T06:30:55.630Z"
+  "updatedAt": "2026-06-19T06:35:35.872Z"
 }
