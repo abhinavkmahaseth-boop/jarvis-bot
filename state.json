@@ -1,29 +1,5 @@
 {
-  "pending": [
-    {
-      "id": "1781876445644-8fw7y",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 63361.5,
-      "zoneHigh": 63533.5,
-      "entry": 63447.5,
-      "sl": 63596.5,
-      "tp1": 62841.5,
-      "tp2": 62653.5,
-      "tp3": 62589.5,
-      "rr1": 4.07,
-      "rr2": 5.33,
-      "rr3": 5.76,
-      "qty": 134,
-      "invalidation": 64786.5,
-      "trigger": "PENDING",
-      "claude": "Grade A fresh FVG with excellent 1:4.07 R:R, aligned bearish bias across timeframes, tight SL (0.23%), entry 516 pips above current price is reachable, and European/US session provides liquidity for swing execution.",
-      "createdAt": 1781876445644
-    }
-  ],
+  "pending": [],
   "open": [],
   "closed": [
     {
@@ -319,5 +295,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-19T19:40:41.284Z"
+  "updatedAt": "2026-06-19T19:45:43.924Z"
 }
