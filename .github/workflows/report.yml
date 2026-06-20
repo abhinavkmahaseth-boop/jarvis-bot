@@ -2,17 +2,14 @@ name: JARVIS Scheduled Report
 
 on:
   schedule:
-    - cron: '30 3 * * *'    # Swing — 9:00 AM IST
-    - cron: '30 21 * * *'   # Scalp — 3:00 AM IST (30 min before Sydney)
-    - cron: '30 23 * * *'   # Scalp — 5:00 AM IST (30 min before Tokyo)
-    - cron: '30 8 * * *'    # Scalp — 2:00 PM IST (30 min before London)
-    - cron: '30 13 * * *'   # Scalp — 6:00 PM IST (30 min before New York)
+    - cron: '30 3 * * *'    # 9:00 AM IST  (Asia mid-session)
+    - cron: '30 8 * * *'    # 2:00 PM IST  (30 min before London)
+    - cron: '30 13 * * *'   # 6:00 PM IST  (30 min before New York)
   workflow_dispatch:
 
 jobs:
   swing:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '30 3 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,23 +22,5 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
           REPORT_MODE: swing
-          REPORT_SYMS: BTCUSD,SOLUSD,ETHUSD
-        run: node .github/scripts/report.js
-
-  scalp:
-    runs-on: ubuntu-latest
-    if: github.event.schedule != '30 3 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Scalp Report
-        env:
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-          REPORT_MODE: scalp
           REPORT_SYMS: BTCUSD,SOLUSD,ETHUSD
         run: node .github/scripts/report.js

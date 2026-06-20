@@ -264,16 +264,6 @@
     const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...(lng ? liq.eqh : liq.eql), ...oppFVGs, ...htf];
     return orderTPs(entry, sl, lng, candidates);
   }
-  function calcSLScalp(fvg, cp) {
-    const buf = Math.max(Math.abs(fvg.gH - fvg.gL) * 0.25, cp * 0.001);
-    return fvg.type === 'bull' ? fvg.gL - buf : fvg.gH + buf;
-  }
-  function calcTPsScalp(fvg, entry, sl, allFVGs, liq) {
-    const lng = fvg.type === 'bull';
-    const oppFVGs = allFVGs.filter(f => f.type !== fvg.type && f.status !== 'MITIGATED').map(f => f.ce);
-    const candidates = [lng ? liq.nearBSL : liq.nearSSL, lng ? liq.majBSL : liq.majSSL, liq.psych, ...(lng ? liq.eqh : liq.eql), ...oppFVGs];
-    return orderTPs(entry, sl, lng, candidates);
-  }
   function dedupeSetups(setups) {
     const out = [];
     for (const s of setups) {
@@ -306,27 +296,6 @@
     setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
     return dedupeSetups(setups).slice(0, 3);
   }
-  function buildSetupsScalp(fvgs, b1h, cp, liq, chLevel) {
-    if (b1h === 'NEUTRAL') return [];
-    const setups = [];
-    for (const fvg of fvgs.filter(f => (f.grade === 'A' || f.grade === 'B') && f.status !== 'MITIGATED')) {
-      const lng = fvg.type === 'bull';
-      if (lng  && (fvg.gH < cp * 0.99 || fvg.gL > cp * 1.003)) continue;
-      if (!lng && (fvg.gL > cp * 1.01 || fvg.gH < cp * 0.997)) continue;
-      const entry = fvg.ce, sl = calcSLScalp(fvg, cp);
-      if (lng  && entry > cp * 1.001) continue;
-      if (!lng && entry < cp * 0.999) continue;
-      // CHoCH gate: skip continuation once price has broken character against the trade.
-      if (chLevel != null && (lng ? cp < chLevel : cp > chLevel)) continue;
-      if (Math.abs(entry - sl) / entry > 0.005) continue;
-      const tps = calcTPsScalp(fvg, entry, sl, fvgs, liq);
-      if (tps[0].rr < 1.5) continue;
-      setups.push({ fvg, entry, sl, tps, lng, invalidation: chLevel });
-    }
-    setups.sort((a, b) => a.fvg.grade !== b.fvg.grade ? (a.fvg.grade === 'A' ? -1 : 1) : b.tps[0].rr - a.tps[0].rr);
-    return dedupeSetups(setups).slice(0, 3);
-  }
-
   // ── Lower-timeframe entry trigger ─────────────────────────────────────────────
   function entryTrigger(cc, lng, zL, zH) {
     if (!cc || cc.length < 3) return 'AWAITING';
@@ -360,25 +329,7 @@
   // c = { d4h, d1h, d15m, d5m }; opts = { lb=5, mode='swing' }
   function analyze(sym, c, opts) {
     const lb = (opts && opts.lb) || 5;
-    const mode = (opts && opts.mode) || 'swing';
     const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
-
-    if (mode === 'scalp') {
-      const { d1h, d15m, d5m } = c;
-      const cp = d5m[d5m.length-1].close;
-      const pv1h = pivots(d1h,lb), pv15m = pivots(d15m,Math.max(3,lb-2)), pv5m = pivots(d5m,3);
-      const b1h = bias(pv1h), b15m = bias(pv15m), b5m = bias(pv5m);
-      const eq1h = eqLevel(pv1h), eq15m = eqLevel(pv15m), eq5m = eqLevel(pv5m);
-      const ch1h = choch(pv1h,b1h), ch15m = choch(pv15m,b15m), ch5m = choch(pv5m,b5m);
-      const liq = liqLevels(pv15m, cp);
-      const fvgs = [...detectFVGs(d15m,'15M',pv15m).slice(-6), ...detectFVGs(d5m,'5M',pv5m).slice(-4)];
-      const eqByTfS = {'15M':eq15m, '5M':eq5m};
-      fvgs.forEach(v => { v.grade = grade(v, b1h, eqByTfS[v.tf] ?? eq1h); });
-      const setups = buildSetupsScalp(fvgs, b1h, cp, liq, ch1h);
-      const confS = {'15M':d5m, '5M':d5m};
-      setups.forEach(s => { s.trigger = entryTrigger(confS[s.fvg.tf] || d5m, s.lng, s.fvg.gL, s.fvg.gH); });
-      return {mode:'scalp', sym, cp, b4h:b1h, b1h:b15m, b15m:b5m, eq4h:eq1h, eq1h:eq15m, eq15m:eq5m, ch4h:ch1h, ch1h:ch15m, ch15m:ch5m, liq, setups, ts};
-    }
 
     const { d4h, d1h, d15m, d5m } = c;
     const cp = d1h[d1h.length-1].close;
@@ -399,19 +350,13 @@
   // ── Live orchestration: fetch latest candles → analyze ────────────────────────
   async function computeAlgo(sym, opts) {
     const cnt = (opts && opts.cnt) || 150;
-    const mode = (opts && opts.mode) || 'swing';
     const lb = (opts && opts.lb) || 5;
-    if (mode === 'scalp') {
-      const [d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
-      return analyze(sym, { d1h, d15m, d5m }, { lb, mode });
-    }
     const [d4h, d1h, d15m, d5m] = await Promise.all([fetchOHLCV(sym,'4h',cnt), fetchOHLCV(sym,'1h',cnt), fetchOHLCV(sym,'15m',cnt), fetchOHLCV(sym,'5m',cnt)]);
-    return analyze(sym, { d4h, d1h, d15m, d5m }, { lb, mode });
+    return analyze(sym, { d4h, d1h, d15m, d5m }, { lb });
   }
 
   return { TF_SEC, CONTRACTS, contractSpec, roundTick, contractQty,
            fetchOHLCV, pivots, bias, eqLevel, choch, avgBody, fvgStat, hasSweep,
            detectFVGs, grade, equalLevels, psychLevel, liqLevels, calcSL, orderTPs, calcTPs,
-           calcSLScalp, calcTPsScalp, dedupeSetups, buildSetups, buildSetupsScalp, analyze,
-           entryTrigger, trigLabel, computeAlgo };
+           dedupeSetups, buildSetups, analyze, entryTrigger, trigLabel, computeAlgo };
 });

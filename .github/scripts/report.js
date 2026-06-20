@@ -22,12 +22,11 @@ const F  = n => n == null ? '—' : Number(n).toLocaleString('en-IN', { maximumF
 const RR = n => `1:${Number(n).toFixed(2)}`;
 
 function formatTelegram(data, verifiedSetups) {
-  const { sym, cp, b4h, b1h, b15m, eq4h, eq1h, ch4h, ch1h, liq, ts } = data;
-  const isScalp = data.mode === 'scalp';
-  const modeTag = isScalp ? '⚡ SCALP' : '📈 SWING';
-  const tf1 = isScalp ? '1H' : '4H', tf2 = isScalp ? '15M' : '1H', tf3 = isScalp ? '5M' : '15M';
-  const eq  = isScalp ? eq1h : eq4h;
-  const ch  = isScalp ? ch1h : ch4h;
+  const { sym, cp, b4h, b1h, b15m, eq4h, ch4h, liq, ts } = data;
+  const modeTag = '📈 SWING';
+  const tf1 = '4H', tf2 = '1H', tf3 = '15M';
+  const eq  = eq4h;
+  const ch  = ch4h;
   const name = sym.replace('USD', '');
   const usingClaude = !!CLAUDE_KEY;
 

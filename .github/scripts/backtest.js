@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Algorithmic backtest — BTC scalp, Grade-A only, NO Claude approval.
+// Algorithmic backtest — BTC SWING (4H trend · 1H/15M FVGs · 15M/5M entry),
+// Grade-A only, NO Claude approval.
 // Walk-forward replay over `days` of history with no look-ahead: each 5m bar's
 // decision sees only candles that had CLOSED by that bar's close. Reuses the live
 // engine.analyze (setup detection) and paper.applyBar (TP1-then-trail exits) so the
@@ -42,20 +43,21 @@ async function tg(text) {
 }
 
 (async () => {
-  console.log(`Backtest ${SYM} scalp · Grade ${GRADE} · ${DAYS}d · no Claude`);
-  const [d1h, d15m, d5m] = await Promise.all([
-    fetchHistory(SYM, '1h', DAYS), fetchHistory(SYM, '15m', DAYS), fetchHistory(SYM, '5m', DAYS),
+  console.log(`Backtest ${SYM} swing · Grade ${GRADE} · ${DAYS}d · no Claude`);
+  const [d4h, d1h, d15m, d5m] = await Promise.all([
+    fetchHistory(SYM, '4h', DAYS), fetchHistory(SYM, '1h', DAYS), fetchHistory(SYM, '15m', DAYS), fetchHistory(SYM, '5m', DAYS),
   ]);
-  console.log(`candles: 1h=${d1h.length} 15m=${d15m.length} 5m=${d5m.length}`);
+  console.log(`candles: 4h=${d4h.length} 1h=${d1h.length} 15m=${d15m.length} 5m=${d5m.length}`);
   if (d5m.length < 300) { console.error('not enough data'); process.exit(1); }
 
   const pending = [], open = [], closed = [];
-  let nextId = 1, p1h = -1, p15 = -1;
+  let nextId = 1, p4h = -1, p1h = -1, p15 = -1;
 
   for (let i = 0; i < d5m.length; i++) {
     const bar = d5m[i];
     const decClose = bar.time + ENGINE.TF_SEC['5m'];   // this 5m bar's close time (sec)
     const decMs = decClose * 1000;
+    while (p4h + 1 < d4h.length && d4h[p4h + 1].time + 14400 <= decClose) p4h++;  // last 4h bar closed
     while (p1h + 1 < d1h.length && d1h[p1h + 1].time + 3600 <= decClose) p1h++;   // last 1h bar closed
     while (p15 + 1 < d15m.length && d15m[p15 + 1].time + 900 <= decClose) p15++;  // last 15m bar closed
 
@@ -73,13 +75,14 @@ async function tg(text) {
       else if (voided || decMs - p.createdAt > STALE_MS) pending.splice(k, 1);
     }
     // 3) analyze (every 5m bar, once warmed up) for new Grade-A setups
-    if (p1h < WARM || p15 < WARM) continue;
+    if (p4h < WARM || p1h < WARM || p15 < WARM) continue;
     const c = {
+      d4h: d4h.slice(Math.max(0, p4h - 149), p4h + 1),
       d1h: d1h.slice(Math.max(0, p1h - 149), p1h + 1),
       d15m: d15m.slice(Math.max(0, p15 - 149), p15 + 1),
       d5m: d5m.slice(Math.max(0, i - 149), i + 1),
     };
-    let data; try { data = ENGINE.analyze(SYM, c, { lb: 5, mode: 'scalp' }); } catch { continue; }
+    let data; try { data = ENGINE.analyze(SYM, c, { lb: 5, mode: 'swing' }); } catch { continue; }
     for (const s of data.setups || []) {
       if (s.fvg.grade !== GRADE) continue;
       const dir = s.lng ? 'LONG' : 'SHORT';
@@ -109,9 +112,9 @@ async function tg(text) {
   for (const t of closed) { eq += t.pnl; curve.push(+eq.toFixed(2)); peak = Math.max(peak, eq); maxDD = Math.max(maxDD, peak - eq); }
 
   const result = {
-    meta: { sym: SYM, mode: 'scalp', grade: GRADE, days: DAYS, claude: false, generatedAt: new Date().toISOString(),
+    meta: { sym: SYM, mode: 'swing', grade: GRADE, days: DAYS, claude: false, generatedAt: new Date().toISOString(),
       periodStart: new Date(d5m[0].time * 1000).toISOString(), periodEnd: new Date(d5m[d5m.length - 1].time * 1000).toISOString(),
-      candles: { '1h': d1h.length, '15m': d15m.length, '5m': d5m.length },
+      candles: { '4h': d4h.length, '1h': d1h.length, '15m': d15m.length, '5m': d5m.length },
       account: startEquity, riskPct: 2, rDollar: R_DOLLAR, exit: 'TP1-then-trail', stillOpen: open.length },
     stats: { trades: closed.length, wins: wins.length, losses: losses.length, be: be.length, winRate,
       totalR, netPnl, equity, startEquity, profitFactor: pf, maxDrawdown: +maxDD.toFixed(2),
@@ -124,7 +127,7 @@ async function tg(text) {
   console.log(`\n=== RESULT ===\ntrades=${closed.length} win=${winRate}% net=${totalR}R ($${netPnl}) PF=${pf === null ? '∞' : pf} maxDD=$${maxDD.toFixed(2)} stillOpen=${open.length}`);
 
   await tg(
-    `🧪 <b>BACKTEST — BTC scalp · Grade A · ${DAYS}d</b>\n` +
+    `🧪 <b>BACKTEST — BTC swing · Grade A · ${DAYS}d</b>\n` +
     `<i>algorithmic · no Claude</i>\n\n` +
     `Trades: <b>${closed.length}</b>  (${wins.length}W / ${losses.length}L / ${be.length}BE)\n` +
     `Win rate: <b>${winRate}%</b>\n` +

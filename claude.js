@@ -24,7 +24,6 @@
     const hour = new Date().getUTCHours();
     const timeCtx = hour < 8 ? 'Asian session' : hour < 16 ? 'European/US session' : 'overnight/low liquidity';
     const aligned = (lng && data.b1h === 'BULLISH') || (!lng && data.b1h === 'BEARISH');
-    const scalp = data.mode === 'scalp';
     const trig = setup.trigger === 'CONFIRMED' ? 'CONFIRMED (price tapped the zone and displaced in-direction)'
       : setup.trigger === 'AWAITING' ? 'AWAITING (price at the zone, no reversal confirmed yet)'
       : setup.trigger === 'PENDING' ? 'PENDING (price has not reached the zone yet)' : 'n/a';
@@ -33,7 +32,7 @@
 Symbol: ${sym}.P (Delta Exchange India perp)
 Direction: ${lng ? 'LONG' : 'SHORT'}
 Current price: ${data.cp}
-Bias — ${scalp ? '1H' : '4H'}: ${data.b4h}, ${scalp ? '15M' : '1H'}: ${data.b1h}
+Bias — 4H: ${data.b4h}, 1H: ${data.b1h}
 FVG: ${fvg.type === 'bull' ? 'bullish/demand' : 'bearish/supply'} on ${fvg.tf}, status ${fvg.status}${fvg.swept ? ', swept' : ''}, grade ${fvg.grade}
 Entry ${entry.toFixed(2)} (FVG center) | SL ${sl.toFixed(2)} (${slPct}% risk) | R:R to TP1 1:${rr}
 TP1 ${tps[0].p.toFixed(2)} (1:${tps[0].rr.toFixed(2)}) · TP2 ${tps[1].p.toFixed(2)} (1:${tps[1].rr.toFixed(2)}) · TP3 ${tps[2].p.toFixed(2)} (1:${tps[2].rr.toFixed(2)})
@@ -41,7 +40,7 @@ Time: ${timeCtx} | Aligned with shorter-TF bias: ${aligned ? 'yes' : 'no'}
 Lower-TF entry trigger: ${trig}
 Structural invalidation (CHoCH): void if price closes ${lng ? 'below' : 'above'} ${setup.invalidation != null ? setup.invalidation.toFixed(2) : 'n/a'} (where trend character flips against this trade)
 
-Check: R:R acceptable (>1.5)? setup logic sound? entry reachable from price? SL reasonable for this mode (scalps run tight, swings wider)? market/time supportive?
+Check: R:R acceptable (>1.5)? setup logic sound? entry reachable from price? SL reasonable (swing stops sit beyond the prior structural swing)? market/time supportive?
 Respond with exactly one line: "APPROVED - <short reason>" or "REJECTED - <short reason>".`;
   }
 

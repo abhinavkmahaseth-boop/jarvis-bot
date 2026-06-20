@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// JARVIS paper-trading loop (BTC, scalp). Runs on a schedule:
+// JARVIS paper-trading loop (BTC, swing). Runs on a schedule:
 //   monitor → scan, Claude-verify new setups, ping "setup ready", watch for the
 //             entry tap → open a paper trade, manage it (TP1-then-trail), ping on
 //             entry and on close. State persists in state.json across runs.
@@ -36,7 +36,7 @@ const LIVE_KEYS  = !!DELTA_KEY && !!DELTA_SECRET;
 const LIVE_ARMED = LIVE_CFG.armed === true && LIVE_KEYS;
 const LIVE_LOTS  = Math.min(Math.max(1, Math.round(Number(LIVE_CFG.lots) || 1)), DELTA.MAX_LOTS);
 const SYM        = 'BTCUSD';
-const ALGO_MODE  = 'scalp';
+const ALGO_MODE  = 'swing';
 const ACCOUNT    = 1000;
 const RISK_PCT   = 0.02;
 const R_DOLLAR   = ACCOUNT * RISK_PCT;          // $ value of 1R
@@ -179,6 +179,13 @@ function applyBar(t, c) {
     t.realizedR += t.remaining * rAt(t.stop);
     t.remaining = 0;
     return finishTrade(t, c, t.stage === 0 ? 'SL' : t.stage === 1 ? 'BE' : 'TP1-trail', t.stop);
+  }
+  // Stop also triggers if a candle CLOSES back through the FVG (reverse close) before
+  // TP1 — "either the swing OR a close beyond the FVG", whichever comes first.
+  if (t.stage === 0 && t.invalidation != null && (t.lng ? c.close < t.invalidation : c.close > t.invalidation)) {
+    t.realizedR += t.remaining * rAt(c.close);
+    t.remaining = 0;
+    return finishTrade(t, c, 'INVALID', c.close);
   }
   const hitTP1 = t.lng ? hi >= t.tp1 : lo <= t.tp1;
   const hitTP2 = t.lng ? hi >= t.tp2 : lo <= t.tp2;
@@ -342,7 +349,7 @@ async function runBook(cfg, data, c5) {
       const slPct = (Math.abs(p.entry - p.sl) / p.entry * 100).toFixed(2);
       await tg(
         `🎯 <b>SETUP READY — BTC ${dir}</b> (Claude ✅)\n` +
-        `Grade <b>${p.grade}</b> · ${p.tf} FVG · scalp\n` +
+        `Grade <b>${p.grade}</b> · ${p.tf} FVG · swing\n` +
         `📍 Entry <b>${F(p.entry)}</b>  (zone ${F(p.zoneLow)}–${F(p.zoneHigh)})\n` +
         `🛑 SL ${F(p.sl)} (${slPct}%)\n` +
         `🎯 TP1 ${F(p.tp1)} · TP2 ${F(p.tp2)} · TP3 ${F(p.tp3)}\n` +
@@ -365,12 +372,13 @@ async function runBook(cfg, data, c5) {
 async function monitor() {
   // Fetch each timeframe ONCE, analyze once, then run both books on the SAME data
   // (one set of API calls drives both the Claude-gated and the algo-only book).
-  const [d1h, d15m, d5m] = await Promise.all([
+  const [d4h, d1h, d15m, d5m] = await Promise.all([
+    ENGINE.fetchOHLCV(SYM, '4h', 150),
     ENGINE.fetchOHLCV(SYM, '1h', 150),
     ENGINE.fetchOHLCV(SYM, '15m', 150),
     ENGINE.fetchOHLCV(SYM, '5m', 150),
   ]);
-  const data = ENGINE.analyze(SYM, { d1h, d15m, d5m }, { lb: 5, mode: ALGO_MODE });
+  const data = ENGINE.analyze(SYM, { d4h, d1h, d15m, d5m }, { lb: 5, mode: ALGO_MODE });
   await runBook(BOOKS.claude, data, d5m);
   await runBook(BOOKS.algo, data, d5m);
 }
@@ -379,7 +387,7 @@ async function monitor() {
 async function reviewBook(cfg) {
   const state = loadState(cfg.file);
   const cl = state.closed;
-  const title = `📊 <b>WEEKLY REVIEW — BTC scalp${cfg.tag}</b>`;
+  const title = `📊 <b>WEEKLY REVIEW — BTC swing${cfg.tag}</b>`;
   if (!cl.length) { await tg(`${title}\nNo closed trades yet.`); return; }
   const wins = cl.filter(t => t.totalR > 0), losses = cl.filter(t => t.totalR < 0), be = cl.filter(t => t.totalR === 0);
   const totalR = cl.reduce((a, t) => a + t.totalR, 0);

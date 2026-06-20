@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// CI smoke test — proves the shared engine and the cron LOAD and RUN for BOTH
-// modes without ReferenceErrors (the class of bug `node --check` cannot catch).
+// CI smoke test — proves the shared engine and the cron LOAD and RUN the swing
+// strategy without ReferenceErrors (the class of bug `node --check` cannot catch).
 // Hits the live Delta read-only API. No Telegram, no Claude calls.
 const path = require('path');
 const engine = require(path.join(__dirname, '..', '..', 'engine.js'));
@@ -23,7 +23,7 @@ const check = (ok, label, extra = '') => {
   check(typeof paper.monitor === 'function' && typeof paper.manageTrade === 'function',
         'paper-trade.js loads + requires engine.js & claude.js');
 
-  for (const mode of ['swing', 'scalp']) {
+  for (const mode of ['swing']) {
     for (const sym of SYMS) {
       try {
         const d = await engine.computeAlgo(sym, { mode });

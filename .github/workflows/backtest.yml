@@ -1,6 +1,6 @@
 name: Backtest (BTC)
 
-# On-demand algorithmic backtest (BTC scalp, Grade-A, no Claude). Writes
+# On-demand algorithmic backtest (BTC swing, Grade-A, no Claude). Writes
 # backtest.json to the paper-data branch so the dashboard's Backtest tab can read it,
 # and posts a summary to Telegram.
 on:
