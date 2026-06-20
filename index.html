@@ -1110,7 +1110,7 @@ async function renderBacktest() {
     return `<tr>${td(dirBadge(t.dir))}${td(esc(t.tf))}${td(F(t.entry))}${td(esc(t.exitReason))}${td((t.totalR >= 0 ? '+' : '') + t.totalR + 'R', c)}${td((t.pnl >= 0 ? '+' : '') + '$' + F(t.pnl), c)}${td(_pDate(t.closedAt))}</tr>`;
   });
   h += `<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">All ${b.closed?.length || 0} trades (newest first)</div>
-    <div style="max-height:420px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+    <div><table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="color:var(--text3);text-align:left">${['Dir','TF','Entry','Exit','R','P&L','Closed'].map(x=>`<th style="padding:.35rem .5rem;font-weight:500;border-bottom:1px solid var(--border)">${x}</th>`).join('')}</tr></thead>
     <tbody>${rows.join('')}</tbody></table></div>
     <div style="font-size:10px;color:var(--text3);margin-top:.6rem">Generated ${m.generatedAt ? _pDate(new Date(m.generatedAt).getTime()) : '—'} · walk-forward, no look-ahead · 5m-candle fills (very tight stops may read slightly optimistic)</div>`;
