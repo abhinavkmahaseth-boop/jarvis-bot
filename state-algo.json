@@ -24,10 +24,10 @@
       "claude": "auto · no Claude",
       "createdAt": 1782039340408,
       "enteredAt": 1782039900000,
-      "stage": 0,
-      "stop": 64648.5,
-      "realizedR": 0,
-      "remaining": 1
+      "stage": 1,
+      "stop": 64373.5,
+      "realizedR": 1.18,
+      "remaining": 0.5
     }
   ],
   "closed": [
@@ -554,19 +554,19 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-21T20:50:44.891Z",
+  "updatedAt": "2026-06-21T20:55:39.289Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-21T20:50:44.563Z",
+    "updatedAt": "2026-06-21T20:55:39.043Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1782075044891
+      "at": 1782075339289
     }
   }
 }
