@@ -1,0 +1,29 @@
+name: JARVIS Levels — 1H (twice daily)
+
+# Focused SMC level map (virgin FVGs · trend-reversal/CHoCH · BSL/SSL) + brief.
+# 1H runs twice a day and ALWAYS posts. Delivery = the shared notify.js (Discord +
+# Telegram). NOTE: GitHub's scheduled crons can be delayed/skipped under load — for
+# this cadence that's fine; use "Run workflow" (workflow_dispatch) any time to force one.
+on:
+  schedule:
+    - cron: '0 3 * * *'    # 08:30 IST — morning
+    - cron: '0 13 * * *'   # 18:30 IST — evening
+  workflow_dispatch:
+
+jobs:
+  levels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 1H levels broadcast
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          LEVELS_DISCORD_WEBHOOK: ${{ secrets.LEVELS_DISCORD_WEBHOOK }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          LEVELS_TF: 1h
+          LEVELS_SYMS: BTCUSD,SOLUSD,ETHUSD
+        run: node .github/scripts/levels.js

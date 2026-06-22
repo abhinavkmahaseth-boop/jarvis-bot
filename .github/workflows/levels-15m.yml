@@ -1,0 +1,73 @@
+name: JARVIS Levels — 15M (every 4h, on change)
+
+# 15M level map every 4 hours, but only POSTS when the map actually changed since the
+# last run (hash of bias + CHoCH + BSL/SSL + FVG zones). State lives on the isolated
+# `levels-data` branch (same pattern as paper-data) so it survives between runs without
+# touching main / Pages. Manual run can force-send via the `force` input.
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours (UTC): 00,04,08,12,16,20
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Send even if unchanged (1 = yes)'
+        default: '0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: levels-15m
+  cancel-in-progress: false
+
+jobs:
+  levels:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Load levels state from levels-data branch
+        run: |
+          git clone --depth 1 --branch levels-data --single-branch \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/ld 2>/dev/null || mkdir -p /tmp/ld
+          if [ -f /tmp/ld/levels-15m.json ]; then cp /tmp/ld/levels-15m.json ./levels-15m.json; echo "loaded state";
+          else echo '{}' > ./levels-15m.json; echo "no prior state — first run"; fi
+
+      - name: 15M levels broadcast (on change)
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          LEVELS_DISCORD_WEBHOOK: ${{ secrets.LEVELS_DISCORD_WEBHOOK }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          LEVELS_TF: 15m
+          LEVELS_SYMS: BTCUSD,SOLUSD,ETHUSD
+          LEVELS_STATE_FILE: ${{ github.workspace }}/levels-15m.json
+          LEVELS_FORCE: ${{ github.event.inputs.force }}
+        run: node .github/scripts/levels.js
+
+      - name: Persist levels state to levels-data branch
+        run: |
+          rm -rf /tmp/ld
+          if ! git clone --depth 1 --branch levels-data --single-branch \
+                 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/ld 2>/dev/null; then
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" /tmp/ld
+            cd /tmp/ld && git checkout --orphan levels-data && git rm -rf . >/dev/null 2>&1 || true
+            cd "$GITHUB_WORKSPACE"
+          fi
+          cp ./levels-15m.json /tmp/ld/levels-15m.json
+          cd /tmp/ld
+          git config user.name "jarvis-bot"
+          git config user.email "jarvis-bot@users.noreply.github.com"
+          git add levels-15m.json
+          git commit -m "levels-15m state $(date -u +%FT%TZ) [skip ci]" || { echo "no change"; exit 0; }
+          for i in 1 2 3; do
+            git push origin levels-data && { echo "pushed"; break; }
+            echo "push failed (attempt $i) — re-syncing"; git pull --rebase origin levels-data || true; sleep 3
+            [ "$i" = 3 ] && { echo "push failed after retries"; exit 1; }
+          done
