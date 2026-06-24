@@ -1,7 +1,7 @@
 {
   "pending": [
     {
-      "id": "1782259280007-jmuix",
+      "id": "1782281141633-29ag9",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
@@ -10,18 +10,18 @@
       "zoneLow": 63263.5,
       "zoneHigh": 63328.5,
       "entry": 63296,
-      "sl": 63921.5,
-      "tp1": 62245,
-      "tp2": 61351,
-      "tp3": 60706,
-      "rr1": 1.68,
-      "rr2": 3.11,
-      "rr3": 4.14,
-      "qty": 32,
+      "sl": 64324,
+      "tp1": 61351,
+      "tp2": 60706,
+      "tp3": 59090,
+      "rr1": 1.89,
+      "rr2": 2.52,
+      "rr3": 4.09,
+      "qty": 19,
       "invalidation": 65603,
       "trigger": "PENDING",
-      "claude": "Bearish bias aligned across timeframes, fresh grade-A FVG at logical entry with acceptable 1:1.68 R:R minimum, tight SL placement beyond structural swing, Asian session supports lower volatility execution, and clear invalidation level provides defined risk management.",
-      "createdAt": 1782259280007
+      "claude": "Fresh grade-A bearish FVG with strong 1:1.89+ R:R, aligned multi-timeframe bias (4H/1H bearish), reasonable 1.62% SL beyond structural swing, entry within reachable distance (~431 pips up), and Asian session aligns with bearish momentum; setup logic sound with clear invalidation level at 65603.",
+      "createdAt": 1782281141633
     }
   ],
   "open": [],
@@ -319,5 +319,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-24T06:01:09.137Z"
+  "updatedAt": "2026-06-24T06:05:42.222Z"
 }
