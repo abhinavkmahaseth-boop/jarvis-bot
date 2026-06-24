@@ -1,35 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1782222352177-p19di",
+      "id": "1782302137013-scfgv",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "15M",
-      "zoneLow": 62662.5,
-      "zoneHigh": 62834,
-      "entry": 62748.5,
-      "sl": 63149.5,
-      "tp1": 61351,
-      "tp2": 60706,
-      "tp3": 60000,
-      "rr1": 3.49,
-      "rr2": 5.09,
-      "rr3": 6.85,
-      "qty": 50,
+      "tf": "1H",
+      "zoneLow": 65639,
+      "zoneHigh": 65761.5,
+      "entry": 65700.5,
+      "sl": 66174.5,
+      "tp1": 63656.5,
+      "tp2": 63242,
+      "tp3": 62245,
+      "rr1": 4.31,
+      "rr2": 5.19,
+      "rr3": 7.29,
+      "qty": 42,
       "invalidation": 65603,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1782222352177,
-      "enteredAt": 1782224400000,
-      "stage": 0,
-      "stop": 63149.5,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1782302137013
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -584,22 +579,55 @@
       "totalR": 1.18,
       "pnl": 23.6,
       "closedAt": 1782091200000
+    },
+    {
+      "id": "1782222352177-p19di",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 62662.5,
+      "zoneHigh": 62834,
+      "entry": 62748.5,
+      "sl": 63149.5,
+      "tp1": 61351,
+      "tp2": 60706,
+      "tp3": 60000,
+      "rr1": 3.49,
+      "rr2": 5.09,
+      "rr3": 6.85,
+      "qty": 50,
+      "invalidation": 65603,
+      "trigger": "PENDING",
+      "claude": "auto · no Claude",
+      "createdAt": 1782222352177,
+      "enteredAt": 1782224400000,
+      "stage": 0,
+      "stop": 63149.5,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 63149.5,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1782301500000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-24T11:50:42.360Z",
+  "updatedAt": "2026-06-24T11:55:37.013Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-24T11:50:42.020Z",
+    "updatedAt": "2026-06-24T11:55:36.006Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1782301842359
+      "at": 1782302136340
     }
   }
 }
