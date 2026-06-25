@@ -1,35 +1,6 @@
 {
   "pending": [],
-  "open": [
-    {
-      "id": "1782385270332-guaro",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "15M",
-      "zoneLow": 61385.5,
-      "zoneHigh": 61546,
-      "entry": 61466,
-      "sl": 61871.5,
-      "tp1": 60706,
-      "tp2": 60304.5,
-      "tp3": 59090,
-      "rr1": 1.87,
-      "rr2": 2.86,
-      "rr3": 5.86,
-      "qty": 49,
-      "invalidation": 63191.5,
-      "trigger": "CONFIRMED",
-      "claude": "Grade A FVG with confirmed lower-TF trigger, strong 1:1.87+ R:R, tight 0.66% SL beyond structure, bearish bias alignment across timeframes, and entry reachable within session.",
-      "createdAt": 1782385270332,
-      "enteredAt": 1782390900000,
-      "stage": 2,
-      "stop": 60706,
-      "realizedR": 0.935,
-      "remaining": 0.5
-    }
-  ],
+  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -354,8 +325,41 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1782363300000
+    },
+    {
+      "id": "1782385270332-guaro",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 61385.5,
+      "zoneHigh": 61546,
+      "entry": 61466,
+      "sl": 61871.5,
+      "tp1": 60706,
+      "tp2": 60304.5,
+      "tp3": 59090,
+      "rr1": 1.87,
+      "rr2": 2.86,
+      "rr3": 5.86,
+      "qty": 49,
+      "invalidation": 63191.5,
+      "trigger": "CONFIRMED",
+      "claude": "Grade A FVG with confirmed lower-TF trigger, strong 1:1.87+ R:R, tight 0.66% SL beyond structure, bearish bias alignment across timeframes, and entry reachable within session.",
+      "createdAt": 1782385270332,
+      "enteredAt": 1782390900000,
+      "stage": 2,
+      "stop": 60706,
+      "realizedR": 3.865,
+      "remaining": 0,
+      "exitReason": "TP3",
+      "exitPrice": 59090,
+      "totalR": 3.87,
+      "pnl": 77.4,
+      "closedAt": 1782395400000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-25T13:55:39.758Z"
+  "updatedAt": "2026-06-25T14:01:16.859Z"
 }
