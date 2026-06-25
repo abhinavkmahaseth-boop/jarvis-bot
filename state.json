@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1782385270332-guaro",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 63191.5,
       "trigger": "CONFIRMED",
       "claude": "Grade A FVG with confirmed lower-TF trigger, strong 1:1.87+ R:R, tight 0.66% SL beyond structure, bearish bias alignment across timeframes, and entry reachable within session.",
-      "createdAt": 1782385270332
+      "createdAt": 1782385270332,
+      "enteredAt": 1782390900000,
+      "stage": 0,
+      "stop": 61871.5,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -352,5 +357,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-25T12:35:35.983Z"
+  "updatedAt": "2026-06-25T12:40:45.869Z"
 }
