@@ -24,10 +24,10 @@
       "claude": "Grade A FVG with confirmed lower-TF trigger, strong 1:1.87+ R:R, tight 0.66% SL beyond structure, bearish bias alignment across timeframes, and entry reachable within session.",
       "createdAt": 1782385270332,
       "enteredAt": 1782390900000,
-      "stage": 0,
-      "stop": 61871.5,
-      "realizedR": 0,
-      "remaining": 1
+      "stage": 1,
+      "stop": 61466,
+      "realizedR": 0.935,
+      "remaining": 0.5
     }
   ],
   "closed": [
@@ -357,5 +357,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-25T13:40:46.818Z"
+  "updatedAt": "2026-06-25T13:45:42.241Z"
 }
