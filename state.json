@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1782349267476-f4ycg",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 60971.5,
+      "zoneHigh": 61006,
+      "entry": 60989,
+      "sl": 61218.5,
+      "tp1": 60304.5,
+      "tp2": 60000,
+      "tp3": 59090,
+      "rr1": 2.98,
+      "rr2": 4.31,
+      "rr3": 8.27,
+      "qty": 87,
+      "invalidation": 65603,
+      "trigger": "CONFIRMED",
+      "claude": "Bearish FVG (Grade A, fresh) with confirmed lower-TF trigger, excellent R:R (1:2.98 primary), tight 0.38% SL beyond prior swing, entry 195 pips above price is reachable, both 4H/1H bearish-aligned, and Asian session supports lower volatility for controlled execution.",
+      "createdAt": 1782349267476
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -295,5 +319,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-25T00:55:40.110Z"
+  "updatedAt": "2026-06-25T01:01:07.969Z"
 }
