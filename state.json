@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1782385270332-guaro",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 61385.5,
+      "zoneHigh": 61546,
+      "entry": 61466,
+      "sl": 61871.5,
+      "tp1": 60706,
+      "tp2": 60304.5,
+      "tp3": 59090,
+      "rr1": 1.87,
+      "rr2": 2.86,
+      "rr3": 5.86,
+      "qty": 49,
+      "invalidation": 63191.5,
+      "trigger": "CONFIRMED",
+      "claude": "Grade A FVG with confirmed lower-TF trigger, strong 1:1.87+ R:R, tight 0.66% SL beyond structure, bearish bias alignment across timeframes, and entry reachable within session.",
+      "createdAt": 1782385270332
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -328,5 +352,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-25T10:55:39.577Z"
+  "updatedAt": "2026-06-25T11:01:11.121Z"
 }
