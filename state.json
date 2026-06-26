@@ -1,5 +1,29 @@
 {
-  "pending": [],
+  "pending": [
+    {
+      "id": "1782435670087-5215b",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "1H",
+      "zoneLow": 60471,
+      "zoneHigh": 61054.5,
+      "entry": 60763,
+      "sl": 61316.5,
+      "tp1": 59519.5,
+      "tp2": 59090,
+      "tp3": 58547.5,
+      "rr1": 2.25,
+      "rr2": 3.02,
+      "rr3": 4,
+      "qty": 36,
+      "invalidation": 63191.5,
+      "trigger": "PENDING",
+      "claude": "Grade A FVG with strong 1:2.24 R:R, aligned bearish bias across timeframes, reasonable SL placement at structural level, entry reachable via minor pullback, and Asian session supports lower volatility for precision entry.",
+      "createdAt": 1782435670087
+    }
+  ],
   "open": [],
   "closed": [
     {
@@ -361,5 +385,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-26T00:55:40.573Z"
+  "updatedAt": "2026-06-26T01:01:10.817Z"
 }
