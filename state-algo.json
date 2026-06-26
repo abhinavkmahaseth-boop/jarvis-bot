@@ -1,7 +1,7 @@
 {
   "pending": [
     {
-      "id": "1782432946694-dqpzf",
+      "id": "1782454844443-pytm7",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
@@ -10,7 +10,7 @@
       "zoneLow": 63381,
       "zoneHigh": 63580,
       "entry": 63480.5,
-      "sl": 63963,
+      "sl": 63963.5,
       "tp1": 62245,
       "tp2": 61887,
       "tp3": 61351,
@@ -21,7 +21,7 @@
       "invalidation": 63191.5,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1782432946694
+      "createdAt": 1782454844443
     }
   ],
   "open": [],
@@ -615,19 +615,19 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-26T06:15:41.940Z",
+  "updatedAt": "2026-06-26T06:20:44.443Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-26T06:15:41.665Z",
+    "updatedAt": "2026-06-26T06:20:44.202Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1782454541940
+      "at": 1782454844443
     }
   }
 }
