@@ -1,7 +1,7 @@
 {
   "pending": [
     {
-      "id": "1782435670087-5215b",
+      "id": "1782457544501-z7qmk",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
@@ -10,18 +10,18 @@
       "zoneLow": 60471,
       "zoneHigh": 61054.5,
       "entry": 60763,
-      "sl": 61316.5,
-      "tp1": 59519.5,
-      "tp2": 59090,
-      "tp3": 58547.5,
-      "rr1": 2.25,
-      "rr2": 3.02,
+      "sl": 61317.5,
+      "tp1": 59670.5,
+      "tp2": 59321,
+      "tp3": 58544.5,
+      "rr1": 1.97,
+      "rr2": 2.6,
       "rr3": 4,
       "qty": 36,
       "invalidation": 63191.5,
       "trigger": "PENDING",
-      "claude": "Grade A FVG with strong 1:2.24 R:R, aligned bearish bias across timeframes, reasonable SL placement at structural level, entry reachable via minor pullback, and Asian session supports lower volatility for precision entry.",
-      "createdAt": 1782435670087
+      "claude": "Bearish bias aligned across timeframes, Grade A FVG on fresh supply, attractive R:R of 1:1.97+ with reasonable SL placement, entry within reach during Asian session consolidation, and clear invalidation level defined.",
+      "createdAt": 1782457544501
     }
   ],
   "open": [],
@@ -385,5 +385,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-26T07:01:04.053Z"
+  "updatedAt": "2026-06-26T07:05:45.153Z"
 }
