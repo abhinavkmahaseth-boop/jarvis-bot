@@ -1,29 +1,5 @@
 {
-  "pending": [
-    {
-      "id": "1782651915798-csppu",
-      "sym": "BTCUSD",
-      "dir": "SHORT",
-      "lng": false,
-      "grade": "A",
-      "tf": "1H",
-      "zoneLow": 60554,
-      "zoneHigh": 60651.5,
-      "entry": 60603,
-      "sl": 60811,
-      "tp1": 60066.5,
-      "tp2": 59233,
-      "tp3": 59090,
-      "rr1": 2.58,
-      "rr2": 6.59,
-      "rr3": 7.27,
-      "qty": 96,
-      "invalidation": 60931.5,
-      "trigger": "PENDING",
-      "claude": "Bearish bias aligned across timeframes, grade A FVG with tapped status provides valid supply zone, excellent R:R (1:2.58 minimum), tight SL at 0.34% risk, entry reachable within current price action, clear invalidation level, and timing aligns with active sessions.",
-      "createdAt": 1782651915798
-    }
-  ],
+  "pending": [],
   "open": [],
   "closed": [
     {
@@ -385,5 +361,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-28T19:01:02.002Z"
+  "updatedAt": "2026-06-28T19:05:40.153Z"
 }
