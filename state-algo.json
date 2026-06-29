@@ -1,35 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1782729643745-5s4q9",
+      "id": "1782738649509-bh3qt",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "1H",
-      "zoneLow": 60554,
-      "zoneHigh": 60651.5,
-      "entry": 60603,
-      "sl": 60810.5,
-      "tp1": 60109,
-      "tp2": 60012,
-      "tp3": 59090,
-      "rr1": 2.38,
-      "rr2": 2.85,
-      "rr3": 7.29,
-      "qty": 96,
+      "tf": "15M",
+      "zoneLow": 60031.5,
+      "zoneHigh": 60389,
+      "entry": 60210.5,
+      "sl": 60498.5,
+      "tp1": 59090,
+      "tp2": 58066.5,
+      "tp3": 57893.5,
+      "rr1": 3.89,
+      "rr2": 7.44,
+      "rr3": 8.05,
+      "qty": 69,
       "invalidation": 60931.5,
-      "trigger": "PENDING",
+      "trigger": "AWAITING",
       "claude": "auto · no Claude",
-      "createdAt": 1782729643745,
-      "enteredAt": 1782735000000,
-      "stage": 2,
-      "stop": 60109,
-      "realizedR": 1.19,
-      "remaining": 0.5
+      "createdAt": 1782738649509
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -683,22 +678,55 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1782489600000
+    },
+    {
+      "id": "1782729643745-5s4q9",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "1H",
+      "zoneLow": 60554,
+      "zoneHigh": 60651.5,
+      "entry": 60603,
+      "sl": 60810.5,
+      "tp1": 60109,
+      "tp2": 60012,
+      "tp3": 59090,
+      "rr1": 2.38,
+      "rr2": 2.85,
+      "rr3": 7.29,
+      "qty": 96,
+      "invalidation": 60931.5,
+      "trigger": "PENDING",
+      "claude": "auto · no Claude",
+      "createdAt": 1782729643745,
+      "enteredAt": 1782735000000,
+      "stage": 2,
+      "stop": 60109,
+      "realizedR": 2.380361445783133,
+      "remaining": 0,
+      "exitReason": "TP1-trail",
+      "exitPrice": 60109,
+      "totalR": 2.38,
+      "pnl": 47.6,
+      "closedAt": 1782738000000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-29T13:05:37.804Z",
+  "updatedAt": "2026-06-29T13:10:49.510Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-29T13:05:37.435Z",
+    "updatedAt": "2026-06-29T13:10:48.512Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1782738337803
+      "at": 1782738648931
     }
   }
 }
