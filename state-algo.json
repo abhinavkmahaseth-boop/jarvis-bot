@@ -681,19 +681,19 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-29T03:50:46.485Z",
+  "updatedAt": "2026-06-29T03:55:37.834Z",
   "live": {
     "armed": false,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-29T03:50:46.028Z",
+    "updatedAt": "2026-06-29T03:55:37.524Z",
     "switchOn": false,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: invalid_api_key",
-      "at": 1782705046484
+      "at": 1782705337834
     }
   }
 }
