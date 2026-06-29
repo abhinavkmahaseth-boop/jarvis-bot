@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1782740741687-rykaj",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 60931.5,
       "trigger": "CONFIRMED",
       "claude": "Grade A FVG tapped with confirmed lower-TF trigger, excellent R:R (1:3.89), aligned 4H/1H bearish bias, reachable entry 282 pips above, tight 0.48% SL beyond structural swing, US session supports volatility, clear CHoCH invalidation at 60931.50.",
-      "createdAt": 1782740741687
+      "createdAt": 1782740741687,
+      "enteredAt": 1782753000000,
+      "stage": 0,
+      "stop": 60498.5,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781595060015-rhpiy",
@@ -385,5 +390,5 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-29T17:10:43.611Z"
+  "updatedAt": "2026-06-29T17:15:37.694Z"
 }
