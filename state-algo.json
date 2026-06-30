@@ -747,19 +747,19 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-06-30T12:10:41.076Z",
+  "updatedAt": "2026-06-30T12:15:40.355Z",
   "live": {
     "armed": true,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-06-30T12:10:40.756Z",
+    "updatedAt": "2026-06-30T12:15:40.049Z",
     "switchOn": true,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key",
-      "at": 1782821441076
+      "at": 1782821740355
     },
     "log": [
       {
