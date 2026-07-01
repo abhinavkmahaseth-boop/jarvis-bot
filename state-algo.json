@@ -1,5 +1,6 @@
 {
-  "pending": [
+  "pending": [],
+  "open": [
     {
       "id": "1782905463083-rfdg9",
       "sym": "BTCUSD",
@@ -21,10 +22,14 @@
       "invalidation": 60765,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1782905463083
+      "createdAt": 1782905463083,
+      "enteredAt": 1782919500000,
+      "stage": 0,
+      "stop": 60304.5,
+      "realizedR": 0,
+      "remaining": 1
     }
   ],
-  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -747,19 +752,19 @@
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-07-01T15:25:33.804Z",
+  "updatedAt": "2026-07-01T15:31:05.710Z",
   "live": {
     "armed": true,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-07-01T15:25:33.480Z",
+    "updatedAt": "2026-07-01T15:31:05.388Z",
     "switchOn": true,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key",
-      "at": 1782919533803
+      "at": 1782919865710
     },
     "log": [
       {
