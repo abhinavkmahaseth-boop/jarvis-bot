@@ -1,35 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1782905463083-rfdg9",
+      "id": "1782920135534-q2s4m",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
       "tf": "1H",
-      "zoneLow": 60031.5,
-      "zoneHigh": 60156,
-      "entry": 60094,
-      "sl": 60304.5,
-      "tp1": 59090,
-      "tp2": 58863,
+      "zoneLow": 61441,
+      "zoneHigh": 62550.5,
+      "entry": 61996,
+      "sl": 62903,
+      "tp1": 60000,
+      "tp2": 59150,
       "tp3": 58066.5,
-      "rr1": 4.77,
-      "rr2": 5.85,
-      "rr3": 9.63,
-      "qty": 95,
+      "rr1": 2.2,
+      "rr2": 3.14,
+      "rr3": 4.33,
+      "qty": 22,
       "invalidation": 60765,
       "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1782905463083,
-      "enteredAt": 1782919500000,
-      "stage": 0,
-      "stop": 60304.5,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1782920135535
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -749,22 +744,55 @@
       "totalR": 1.95,
       "pnl": 39,
       "closedAt": 1782752700000
+    },
+    {
+      "id": "1782905463083-rfdg9",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "1H",
+      "zoneLow": 60031.5,
+      "zoneHigh": 60156,
+      "entry": 60094,
+      "sl": 60304.5,
+      "tp1": 59090,
+      "tp2": 58863,
+      "tp3": 58066.5,
+      "rr1": 4.77,
+      "rr2": 5.85,
+      "rr3": 9.63,
+      "qty": 95,
+      "invalidation": 60765,
+      "trigger": "PENDING",
+      "claude": "auto · no Claude",
+      "createdAt": 1782905463083,
+      "enteredAt": 1782919500000,
+      "stage": 0,
+      "stop": 60304.5,
+      "realizedR": -1,
+      "remaining": 0,
+      "exitReason": "SL",
+      "exitPrice": 60304.5,
+      "totalR": -1,
+      "pnl": -20,
+      "closedAt": 1782919500000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-07-01T15:31:05.710Z",
+  "updatedAt": "2026-07-01T15:35:36.006Z",
   "live": {
     "armed": true,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-07-01T15:31:05.388Z",
+    "updatedAt": "2026-07-01T15:35:34.671Z",
     "switchOn": true,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key",
-      "at": 1782919865710
+      "at": 1782920135012
     },
     "log": [
       {
@@ -794,6 +822,11 @@
       },
       {
         "t": 1782905463245,
+        "ev": "ERROR",
+        "why": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key"
+      },
+      {
+        "t": 1782920135701,
         "ev": "ERROR",
         "why": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key"
       }
