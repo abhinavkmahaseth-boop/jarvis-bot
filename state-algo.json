@@ -1,35 +1,30 @@
 {
-  "pending": [],
-  "open": [
+  "pending": [
     {
-      "id": "1782946869456-maol4",
+      "id": "1782964244123-sm9he",
       "sym": "BTCUSD",
       "dir": "SHORT",
       "lng": false,
       "grade": "A",
-      "tf": "15M",
-      "zoneLow": 60662.5,
-      "zoneHigh": 60776.5,
-      "entry": 60719.5,
-      "sl": 60849,
-      "tp1": 60251,
-      "tp2": 60000,
-      "tp3": 59790,
-      "rr1": 3.62,
-      "rr2": 5.56,
-      "rr3": 7.18,
-      "qty": 154,
+      "tf": "1H",
+      "zoneLow": 61441,
+      "zoneHigh": 62550.5,
+      "entry": 61996,
+      "sl": 63167.5,
+      "tp1": 60000,
+      "tp2": 58953.5,
+      "tp3": 57309,
+      "rr1": 1.7,
+      "rr2": 2.6,
+      "rr3": 4,
+      "qty": 17,
       "invalidation": 60765,
-      "trigger": "CONFIRMED",
+      "trigger": "PENDING",
       "claude": "auto · no Claude",
-      "createdAt": 1782946869456,
-      "enteredAt": 1782963600000,
-      "stage": 0,
-      "stop": 60849,
-      "realizedR": 0,
-      "remaining": 1
+      "createdAt": 1782964244123
     }
   ],
+  "open": [],
   "closed": [
     {
       "id": "1781610941309-vsbo0",
@@ -782,22 +777,55 @@
       "totalR": -1,
       "pnl": -20,
       "closedAt": 1782919500000
+    },
+    {
+      "id": "1782946869456-maol4",
+      "sym": "BTCUSD",
+      "dir": "SHORT",
+      "lng": false,
+      "grade": "A",
+      "tf": "15M",
+      "zoneLow": 60662.5,
+      "zoneHigh": 60776.5,
+      "entry": 60719.5,
+      "sl": 60849,
+      "tp1": 60251,
+      "tp2": 60000,
+      "tp3": 59790,
+      "rr1": 3.62,
+      "rr2": 5.56,
+      "rr3": 7.18,
+      "qty": 154,
+      "invalidation": 60765,
+      "trigger": "CONFIRMED",
+      "claude": "auto · no Claude",
+      "createdAt": 1782946869456,
+      "enteredAt": 1782963600000,
+      "stage": 0,
+      "stop": 60849,
+      "realizedR": -0.528957528957529,
+      "remaining": 0,
+      "exitReason": "INVALID",
+      "exitPrice": 60788,
+      "totalR": -0.53,
+      "pnl": -10.6,
+      "closedAt": 1782963600000
     }
   ],
   "startEquity": 1000,
-  "updatedAt": "2026-07-02T03:45:41.325Z",
+  "updatedAt": "2026-07-02T03:50:44.681Z",
   "live": {
     "armed": true,
     "maxLots": 100,
     "mode": "arm-and-auto",
     "keysSet": true,
-    "updatedAt": "2026-07-02T03:45:40.745Z",
+    "updatedAt": "2026-07-02T03:50:43.297Z",
     "switchOn": true,
     "lots": 1,
     "connection": {
       "ok": false,
       "error": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key",
-      "at": 1782963941325
+      "at": 1782964243621
     },
     "log": [
       {
@@ -897,6 +925,11 @@
       },
       {
         "t": 1782946869573,
+        "ev": "ERROR",
+        "why": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key"
+      },
+      {
+        "t": 1782964244289,
         "ev": "ERROR",
         "why": "Delta GET /v2/positions: ip_not_whitelisted_for_api_key"
       }
